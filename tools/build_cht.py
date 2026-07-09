@@ -16,13 +16,18 @@ from PIL import Image, ImageFont, ImageDraw
 
 WIDTH = 16  # Big5Font 固定字寬 kChineseTraditionalWidth
 
-# LLM 常產出、但不在 Big5 的字元 → 正規化成 Big5 等價標點(安全網)
+# LLM 常產出、但不在 Big5 的字元 → 正規化成 Big5 等價(安全網)。
+# 注意:名字分隔號 ·(U+00B7)本身就是 Big5(a150),不要動它。
 NORMALIZE = {
+    # 標點
     "⋯": "…",  # ⋯(midline)→ …(Big5 a14b)
     "‘": "「", "’": "」",  # ‘’ → 「」
     "“": "『", "”": "』",  # “” → 『』
     "―": "—",  # ― → —
-    "·": "‧",  # ·(middle dot)→ ‧
+    "～": "∼",  # 全形波浪(非 Big5)→ ∼(a1e3)
+    # 簡體漏字 → 繁體(haiku 偶爾漏出;非 Big5 掃描可抓全)
+    "赢": "贏", "唠": "嘮", "啧": "嘖", "咔": "喀",
+    "銹": "鏽", "嘚": "噠", "嚯": "哦",
 }
 
 def normalize(s):
@@ -38,8 +43,20 @@ def main():
     # 預設古籍風明體(AR PL UMing TW);face 2 = TW
     ap.add_argument("--font", default="/usr/share/fonts/truetype/arphic/uming.ttc")
     ap.add_argument("--face", type=int, default=2)
+    ap.add_argument("--corrections", default="translation/corrections.tsv",
+                    help="錯誤中文\\t正確中文,子字串替換(可無)")
     a = ap.parse_args()
     H = a.size
+
+    corrections = []
+    try:
+        for line in open(a.corrections, encoding="utf-8"):
+            line = line.rstrip("\n")
+            if "\t" in line and not line.startswith("#"):
+                wrong, right = line.split("\t", 1)
+                corrections.append((wrong, right))
+    except FileNotFoundError:
+        pass
 
     # 讀來源。col1==col2(未翻譯)或 col2 空 → 跳過,只收已翻譯者。
     rows = []
@@ -55,6 +72,8 @@ def main():
             if not zh or zh == en:
                 continue  # 未翻譯
             zh = normalize(zh)
+            for wrong, right in corrections:
+                zh = zh.replace(wrong, right)
             rows.append((en, zh))
             chars.update(zh)
 

@@ -34,9 +34,16 @@ Quest for Glory I（Sierra 原版）的**繁體中文化**專案,提供 **EGA + 
 
 - [x] M0 可行性確認（見 `docs/00-feasibility.md`）
 - [x] M1 spike:VGA 端到端打通（引擎 `ZH_TWN`+Big5 分支 → TSV 替換 → 實機繁中對白）
-- [ ] M2 VGA 全量翻譯（抽全部 text/message → TSV → 翻譯）＋ 烘字垂直定位/字型品質優化＋ hook 其餘文字入口
+- [x] M2 VGA 全量翻譯：4521 則抽字，**4480 則已翻譯（99%）**；古風明體字型（AR PL UMing TW 15px）；2486 字 Big5 字型
+- [ ] M2 收尾：校潤專有名詞一致性、hook 其餘文字入口（`DrawString`/狀態列/選單）、真人流程實測
 - [ ] M3 EGA 版
 - [ ] M4 多平台打包交付
+
+### 翻譯工作流
+
+`SCI_DUMP_RES` 抽字 → `extract_strings.py`（MessageReaderV3 精確抽 key）→ `translation/todo/*.tsv`（分批）
+→ haiku subagent 翻譯 → `translation/batch/NN-auto.tsv` → `merge_translations.py`（strip 比對保留 exact key）
+→ `translation/translation.tsv`（canonical worklist）→ `build_cht.py`（NORMALIZE 修非 Big5 + `corrections.tsv` 修錯譯 + 烘明體）→ `dist/`。
 
 ## 交付原則
 

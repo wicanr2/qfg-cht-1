@@ -96,6 +96,23 @@
 | Dead Parrot Inn | 死鸚鵡客棧 |
 | Dragon Smoke mountains | 龍煙山脈 |
 
+## M2 subagent 待定術語定調(2026-07-09)
+
+subagent 翻譯時回報、經把關定調(已套 `translation/corrections.tsv` 修正明顯錯譯):
+
+| 英 | 定調中文 | 備註 |
+|---|---|---|
+| Frost Giant | 霜巨人 | 修正 subagent 誤譯「暴風巨人」 |
+| Laura Bow | 蘿拉·鮑 | Sierra 偵探系列角色(彩蛋);修正誤譯「勞拉蝴蝶結」 |
+| Shapeir / Raseir | 夏皮爾 / 拉希爾 | QFG2 地名彩蛋,對齊 qog-2(修正 沙皮爾/沙皮耶/拉賽爾) |
+| Griffin | 獅鷲 | |
+| Minotaur | 牛頭人 | 統一(subagent 有 牛頭怪/米諾陶 混用) |
+| mandrake root | 曼德拉草根 | |
+| Djinn / Efreet | 精靈 / 火精靈 | 一千零一夜生物 |
+| Power/Vigor/Undead Potion | 法力藥水 / 活力藥水 / 不死藥膏 | |
+
+其餘 subagent 回報的彩蛋/次要專有名詞(多為 QFG 宇宙或其他 Sierra 遊戲的 NPC 閒聊引用)採音譯,詳見各 `translation/batch/NN-auto.tsv`,日後校潤時再統一。
+
 ## 待補
 
-- 抽字過程中出現、本表未列的專有名詞 → 譯者回報,由把關者(旗艦)定調後補入本表。
+- 校潤時抽查 `NN-auto.tsv` 專有名詞一致性;新發現的錯譯加進 `translation/corrections.tsv`(錯誤中文\t正確中文,子字串替換)。
