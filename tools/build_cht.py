@@ -35,6 +35,33 @@ def normalize(s):
         s = s.replace(a, b)
     return s
 
+# 半形 → 全形(僅在 CJK 相鄰時轉,保留 %d / 數字 / 英文片段中的半形標點)
+# 用明確 codepoint,避免全形值被輸入法/編輯器存成半形。
+HALF2FULL = {
+    ",": "，",  # ，
+    "!": "！",  # ！
+    "?": "？",  # ？
+    ":": "：",  # ：
+    ";": "；",  # ；
+}
+
+def _is_cjk(ch):
+    return ch and "㐀" <= ch <= "鿿"
+
+def fullwidthize(s):
+    out = []
+    n = len(s)
+    for i, ch in enumerate(s):
+        prev = s[i - 1] if i > 0 else ""
+        nxt = s[i + 1] if i + 1 < n else ""
+        if ch in HALF2FULL and (_is_cjk(prev) or _is_cjk(nxt)):
+            out.append(HALF2FULL[ch])
+        elif ch == "." and _is_cjk(prev) and not nxt.isdigit():
+            out.append("。")  # 中文句末句號
+        else:
+            out.append(ch)
+    return "".join(out)
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("tsv")
@@ -72,6 +99,7 @@ def main():
             if not zh or zh == en:
                 continue  # 未翻譯
             zh = normalize(zh)
+            zh = fullwidthize(zh)
             for wrong, right in corrections:
                 zh = zh.replace(wrong, right)
             rows.append((en, zh))
