@@ -26,15 +26,19 @@ def main():
     a = ap.parse_args()
     H = a.size
 
-    # 讀來源
+    # 讀來源。col1==col2(未翻譯)或 col2 空 → 跳過,只收已翻譯者。
     rows = []
     chars = set()
+    total_lines = 0
     with open(a.tsv, encoding="utf-8") as f:
         for line in f:
             line = line.rstrip("\n")
             if not line or "\t" not in line:
                 continue
+            total_lines += 1
             en, zh = line.split("\t", 1)
+            if not zh or zh == en:
+                continue  # 未翻譯
             rows.append((en, zh))
             chars.update(zh)
 
@@ -64,11 +68,18 @@ def main():
         if len(b5) != 2:
             continue
         code = (b5[0] << 8) | b5[1]  # 高位元組 >=0x81 → 0x8000 已設
-        # 渲染到 WIDTH×H 1bpp
+        # 渲染到 WIDTH×H 1bpp:以字面 ink bbox 置中,避免全形標點/小字偏高。
         img = Image.new("L", (WIDTH, H), 0)
         d = ImageDraw.Draw(img)
-        # 垂直置中微調:多數 CJK 字型在小尺寸下略偏上,y 給 0
-        d.text((0, 0), ch, fill=255, font=font)
+        try:
+            bbox = d.textbbox((0, 0), ch, font=font)  # (l,t,r,b) 實際墨水範圍
+        except Exception:
+            bbox = (0, 0, WIDTH, H)
+        gw = bbox[2] - bbox[0]
+        gh = bbox[3] - bbox[1]
+        ox = (WIDTH - gw) // 2 - bbox[0]
+        oy = (H - gh) // 2 - bbox[1]
+        d.text((ox, oy), ch, fill=255, font=font)
         rows_bytes = bytearray()
         px = img.load()
         for y in range(H):
