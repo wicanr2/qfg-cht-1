@@ -1,0 +1,182 @@
+--- engines/sci/graphics/cache.cpp	2026-06-20 09:43:09.829527262 +0800
++++ engines/sci/graphics/cache.cpp	2026-07-09 16:58:56.340777947 +0800
+@@ -30,6 +30,7 @@
+ #include "sci/graphics/scifont.h"
+ #include "sci/graphics/fontsjis.h"
+ #include "sci/graphics/fontkorean.h"
++#include "sci/graphics/fontchinese.h"
+ #include "sci/graphics/view.h"
+ 
+ namespace Sci {
+@@ -72,6 +73,10 @@
+ 		// Create special SJIS font in japanese games, when font 900 is selected
+ 		else if ((fontId == 900) && (g_sci->getLanguage() == Common::JA_JPN))
+ 			_cachedFonts[fontId] = new GfxFontSjis(_screen, fontId);
++		// Traditional Chinese (Big5) fan translation: wrap every font so ASCII
++		// stays on the original SCI glyphs and Big5 double-byte renders via Big5Font.
++		else if (g_sci->getLanguage() == Common::ZH_TWN)
++			_cachedFonts[fontId] = new GfxFontChinese(_resMan, _screen, fontId);
+ 		else
+ 			_cachedFonts[fontId] = new GfxFontFromResource(_resMan, _screen, fontId);
+ 	}
+--- engines/sci/graphics/text16.cpp	2026-06-20 09:43:09.833596804 +0800
++++ engines/sci/graphics/text16.cpp	2026-07-09 17:19:06.621972751 +0800
+@@ -569,6 +569,15 @@
+ 	int16 textWidth, maxTextWidth, textHeight;
+ 	int16 offset = 0;
+ 	int16 hline = 0;
++
++	// Traditional Chinese fan translation: swap the original English string for
++	// its Big5 translation (content-keyed). GfxFontChinese renders the double-byte glyphs.
++	if (g_sci->getLanguage() == Common::ZH_TWN) {
++		const char *tr = g_sci->getChtTranslation(text);
++		if (tr)
++			text = tr;
++	}
++
+ 	GuiResourceId previousFontId = GetFontId();
+ 	int16 previousPenColor = _ports->_curPort->penClr;
+ 	bool doubleByteMode = false;
+--- engines/sci/sci.cpp	2026-06-20 09:43:09.836779220 +0800
++++ engines/sci/sci.cpp	2026-07-09 17:18:48.120606483 +0800
+@@ -19,6 +19,9 @@
+  *
+  */
+ 
++// CHT tooling hook (SCI_DUMP_RES) needs getenv; allow it for this file only.
++#define FORBIDDEN_SYMBOL_EXCEPTION_getenv
++
+ #include "common/system.h"
+ #include "common/config-manager.h"
+ #include "common/debug-channels.h"
+@@ -289,6 +292,34 @@
+ 	}
+ */
+ 
++	// CHT tooling: dump decompressed text/message/script resources as patch files
++	// (uses ScummVM's own SCI decompressor). Triggered by SCI_DUMP_RES=<dir>; quits after.
++	if (const char *dumpDir = getenv("SCI_DUMP_RES")) {
++		const ResourceType dumpTypes[] = { kResourceTypeText, kResourceTypeMessage, kResourceTypeFont, kResourceTypeScript, kResourceTypeHeap };
++		for (int ti = 0; ti < 5; ++ti) {
++			Common::List<ResourceId> list = _resMan->listResources(dumpTypes[ti], -1);
++			for (Common::List<ResourceId>::iterator it = list.begin(); it != list.end(); ++it) {
++				Resource *r = _resMan->findResource(*it, 0);
++				if (!r)
++					continue;
++				Common::String fn = Common::String::format("%s/%s.%03d", dumpDir,
++					getResourceTypeName(dumpTypes[ti]), it->getNumber());
++				Common::DumpFile out;
++				if (out.open(Common::Path(fn))) {
++					r->writeToStream(&out);
++					out.finalize();
++					out.close();
++				}
++			}
++		}
++		warning("SCI_DUMP_RES: dumped text/message/font resources to %s", dumpDir);
++		return Common::kNoError;
++	}
++
++	// Traditional Chinese fan translation: load the content-keyed translation table.
++	if (getLanguage() == Common::ZH_TWN)
++		loadChtTranslation();
++
+ 	// Add the after market patches for the specified game, if they exist
+ 	_resMan->addNewGMPatch(_gameId);
+ 	_resMan->addNewD110Patch(_gameId);
+@@ -831,7 +862,50 @@
+ 	return _gameDescription->gameId;
+ }
+ 
++const char *SciEngine::getChtTranslation(const char *original) const {
++	if (_chtTranslation.empty() || !original)
++		return nullptr;
++	Common::HashMap<Common::String, Common::String>::const_iterator it = _chtTranslation.find(original);
++	if (it == _chtTranslation.end())
++		return nullptr;
++	return it->_value.c_str();
++}
++
++void SciEngine::loadChtTranslation() {
++	// Runtime translation file: one entry per line, "<english>\t<big5 bytes>".
++	// TAB (0x09) and LF (0x0A) never occur inside Big5, so they are safe
++	// delimiters. Human-maintained source is UTF-8; the build tool converts it
++	// to this Big5 runtime form. Shipped in the game directory as CHT patch data.
++	Common::File f;
++	if (!f.open("translation.tsv"))
++		return;
++	int count = 0;
++	while (!f.eos()) {
++		Common::String line = f.readLine();
++		if (line.empty())
++			continue;
++		const char *s = line.c_str();
++		const char *tab = strchr(s, '\t');
++		if (!tab || tab == s)
++			continue;
++		Common::String key(s, tab - s);
++		Common::String val(tab + 1);
++		if (val.empty())
++			continue;
++		_chtTranslation[key] = val;
++		++count;
++	}
++	debug(1, "CHT: loaded %d translation entries", count);
++}
++
+ Common::Language SciEngine::getLanguage() const {
++	// Traditional Chinese fan translation: allow forcing ZH_TWN via the target's
++	// "language" config key (e.g. --language=zh_TW) so the CHT patch can be applied
++	// on top of the original English game without a dedicated detection entry.
++	if (ConfMan.hasKey("language")) {
++		if (Common::parseLanguage(ConfMan.get("language")) == Common::ZH_TWN)
++			return Common::ZH_TWN;
++	}
+ 	return _gameDescription->language;
+ }
+ 
+--- engines/sci/sci.h	2026-06-20 09:43:09.836779220 +0800
++++ engines/sci/sci.h	2026-07-09 17:18:21.884621909 +0800
+@@ -26,6 +26,8 @@
+ #include "common/macresman.h"
+ #include "common/util.h"
+ #include "common/random.h"
++#include "common/hashmap.h"
++#include "common/hash-str.h"
+ #include "sci/engine/vm_types.h"	// for Selector
+ #include "sci/debug.h"	// for DebugState
+ #include "sci/detection.h" // Shared code between detection and engine
+@@ -186,6 +188,15 @@
+ 	Common::Language getLanguage() const;
+ 
+ 	/**
++	 * Traditional Chinese fan-translation lookup. Returns the Big5-encoded
++	 * translation for an original (English) on-screen string, or nullptr if
++	 * there is none. Content-keyed so translations live in an external
++	 * translation.tsv rather than patched SCI resources.
++	 */
++	const char *getChtTranslation(const char *original) const;
++	void loadChtTranslation();
++
++	/**
+ 	 * Returns true if the game's language direction is Right To Left.
+ 	 * RTL support did not exist in the original SCI engine.
+ 	 * This is a ScummVM feature to support modern fan translations.
+@@ -406,6 +417,7 @@
+ 
+ 	const ADGameDescription *_gameDescription;
+ 	const SciGameId _gameId;
++	Common::HashMap<Common::String, Common::String> _chtTranslation; /**< CHT: English -> Big5 */
+ 	ResourceManager *_resMan; /**< The resource manager */
+ 	ScriptPatcher *_scriptPatcher; /**< The script patcher */
+ 	EngineState *_gamestate;
+--- engines/sci/module.mk	2026-06-20 09:43:09.835596804 +0800
++++ engines/sci/module.mk	2026-07-09 16:59:15.588012276 +0800
+@@ -48,6 +48,7 @@
+ 	graphics/controls16.o \
+ 	graphics/coordadjuster.o \
+ 	graphics/cursor.o \
++	graphics/fontchinese.o \
+ 	graphics/fontkorean.o \
+ 	graphics/fontsjis.o \
+ 	graphics/macfont.o \

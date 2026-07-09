@@ -11,9 +11,17 @@ Quest for Glory I（Sierra 原版）的**繁體中文化**專案,提供 **EGA + 
 | 文件 | 內容 |
 |---|---|
 | [docs/00-feasibility.md](docs/00-feasibility.md) | **可行性評估**:版本確認、ScummVM SCI CJK 現況、技術路線、風險、里程碑 |
-| docs/10-terminology.md | 術語表 / 譯名對照（CONTEXT，動工後補） |
-| docs/20-engine-cjk-patch.md | 引擎繪字 patch 說明（`GfxFontChinese` + `ZH_TWN` 分支，動工後補） |
-| docs/30-text-pipeline.md | 文字抽取 → 翻譯 → 回填流程（動工後補） |
+| [docs/20-engine-cjk-patch.md](docs/20-engine-cjk-patch.md) | 引擎繪字 patch：`GfxFontChinese` + `ZH_TWN` 分支 + TSV 內容替換 |
+| [docs/30-text-pipeline.md](docs/30-text-pipeline.md) | 文字抽取 → 翻譯（TSV）→ Big5 字型烘製流程 |
+| docs/10-terminology.md | 術語表 / 譯名對照（CONTEXT，M2 抽字後補） |
+
+## M1 spike 成果（已實機驗證）
+
+啟動版權框英文原文自動替換為繁體中文，經 ScummVM SCI 文字路徑 + Big5 渲染：
+
+| 英文原版 | 繁中化 |
+|---|---|
+| ![en](docs/images/m1-spike-copyright-en.png) | ![cht](docs/images/m1-spike-copyright-cht.png) |
 
 ## 版本與素材
 
@@ -25,8 +33,8 @@ Quest for Glory I（Sierra 原版）的**繁體中文化**專案,提供 **EGA + 
 ## 目前進度
 
 - [x] M0 可行性確認（見 `docs/00-feasibility.md`）
-- [ ] M1 spike:VGA 端到端打通（抽資源 → 引擎加繁中分支 → 實機看到一句繁中對白）
-- [ ] M2 VGA 全量翻譯
+- [x] M1 spike:VGA 端到端打通（引擎 `ZH_TWN`+Big5 分支 → TSV 替換 → 實機繁中對白）
+- [ ] M2 VGA 全量翻譯（抽全部 text/message → TSV → 翻譯）＋ 烘字垂直定位/字型品質優化＋ hook 其餘文字入口
 - [ ] M3 EGA 版
 - [ ] M4 多平台打包交付
 

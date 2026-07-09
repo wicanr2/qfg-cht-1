@@ -24,3 +24,6 @@ scummvm-src/
 # Python
 .venv/
 __pycache__/
+
+# build 輸出(可重建)
+dist/
