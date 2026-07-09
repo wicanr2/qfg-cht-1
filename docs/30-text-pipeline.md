@@ -35,6 +35,17 @@
 - `.SCR`/`.HEP` 內嵌字串:因改走內容替換,**不需**逐一回填 script;只要原文出現在 `GfxText16` 即可替換。
   (若某些字串未經 `Box`/`DrawString`,M2 再擴充 hook 點。)
 
+## 覆蓋範圍與已知缺口(M2 驗證,2026-07-09)
+
+- **已涵蓋(text 路徑)**:對白、敘述、訊息(message)、text 資源 —— 全走 `GfxText16::Box`/`DrawString`/`DrawStatus`,
+  已 hook + 翻譯,實機渲染正常(版權框 message.002 為證)。
+- **未涵蓋(baked 美術字 / view)**:部分 UI 表單的**靜態標籤是烘進 view/pic 的點陣美術字,不是文字資源**,
+  無法用文字替換翻譯。已核實下列在**任何**解壓資源(message/text/script/heap/font)都找不到明文 → 確認為美術字:
+  - 角色創建畫面屬性名:`Strength` `Intelligence` `Agility` `Vitality` `Luck` `Magic` `Weapon Use` `Parry` `Dodge` `Stealth` 等(數字是動態文字、會翻;標籤是圖)。
+  - 開場 credits 花體字(`Executive Producer` `Director`…)。
+  - 職業選擇 banner(`fighter` 等)。
+  - 這類要中文化需**改 view 美術**(重繪羊皮紙標籤),屬獨立的美術任務,不在 text pipeline 範圍。
+
 ## 工具
 
 - `tools/sci_map.py` — SCI1/SCI1.1 RESOURCE.MAP 解析器(照 ScummVM `readResourceMapSCI1` 對齊)。純 stdlib。
