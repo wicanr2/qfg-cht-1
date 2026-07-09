@@ -20,8 +20,23 @@
  			_cachedFonts[fontId] = new GfxFontFromResource(_resMan, _screen, fontId);
  	}
 --- engines/sci/graphics/text16.cpp	2026-06-20 09:43:09.833596804 +0800
-+++ engines/sci/graphics/text16.cpp	2026-07-09 17:19:06.621972751 +0800
-@@ -569,6 +569,15 @@
++++ engines/sci/graphics/text16.cpp	2026-07-09 18:20:39.817427896 +0800
+@@ -442,6 +442,14 @@
+ #endif
+ 
+ void GfxText16::DrawString(const Common::String &str, GuiResourceId orgFontId, int16 orgPenColor) {
++	// Traditional Chinese fan translation (content-keyed).
++	if (g_sci->getLanguage() == Common::ZH_TWN) {
++		const char *tr = g_sci->getChtTranslation(str.c_str());
++		if (tr) {
++			Draw(tr, 0, strlen(tr), orgFontId, orgPenColor);
++			return;
++		}
++	}
+ 	Draw(str.c_str(), 0, str.size(), orgFontId, orgPenColor);
+ }
+ 
+@@ -569,6 +577,15 @@
  	int16 textWidth, maxTextWidth, textHeight;
  	int16 offset = 0;
  	int16 hline = 0;
@@ -37,6 +52,47 @@
  	GuiResourceId previousFontId = GetFontId();
  	int16 previousPenColor = _ports->_curPort->penClr;
  	bool doubleByteMode = false;
+@@ -683,10 +700,18 @@
+ 	_ports->penColor(previousPenColor);
+ }
+ 
+-void GfxText16::DrawString(const Common::String &textOrig) {
++void GfxText16::DrawString(const Common::String &textOrig0) {
+ 	GuiResourceId previousFontId = GetFontId();
+ 	int16 previousPenColor = _ports->_curPort->penClr;
+ 
++	// Traditional Chinese fan translation (content-keyed).
++	Common::String textOrig = textOrig0;
++	if (g_sci->getLanguage() == Common::ZH_TWN) {
++		const char *tr = g_sci->getChtTranslation(textOrig0.c_str());
++		if (tr)
++			textOrig = tr;
++	}
++
+ 	Common::String text;
+ 	if (!g_sci->isLanguageRTL())
+ 		text = textOrig;
+@@ -700,11 +725,19 @@
+ 
+ // we need to have a separate status drawing code
+ //  In KQ4 the IV char is actually 0xA, which would otherwise get considered as linebreak and not printed
+-void GfxText16::DrawStatus(const Common::String &strOrig) {
++void GfxText16::DrawStatus(const Common::String &strOrig0) {
+ 	GetFont();
+ 	if (!_font)
+ 		return;
+ 
++	// Traditional Chinese fan translation (content-keyed).
++	Common::String strOrig = strOrig0;
++	if (g_sci->getLanguage() == Common::ZH_TWN) {
++		const char *tr = g_sci->getChtTranslation(strOrig0.c_str());
++		if (tr)
++			strOrig = tr;
++	}
++
+ 	Common::String str;
+ 	if (!g_sci->isLanguageRTL())
+ 		str = strOrig;
 --- engines/sci/sci.cpp	2026-06-20 09:43:09.836779220 +0800
 +++ engines/sci/sci.cpp	2026-07-09 17:18:48.120606483 +0800
 @@ -19,6 +19,9 @@
