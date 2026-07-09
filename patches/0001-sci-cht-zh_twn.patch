@@ -93,6 +93,64 @@
  	Common::String str;
  	if (!g_sci->isLanguageRTL())
  		str = strOrig;
+--- engines/sci/graphics/paint16.cpp	2026-06-20 09:43:09.831596805 +0800
++++ engines/sci/graphics/paint16.cpp	2026-07-09 18:57:16.110413749 +0800
+@@ -19,6 +19,8 @@
+  *
+  */
+ 
++#define FORBIDDEN_SYMBOL_EXCEPTION_getenv
++#include "common/file.h"
+ #include "sci/sci.h"
+ #include "sci/engine/features.h"
+ #include "sci/engine/state.h"
+@@ -88,6 +90,8 @@
+ }
+ 
+ void GfxPaint16::drawPicture(GuiResourceId pictureId, bool mirroredFlag, bool addToFlag, GuiResourceId paletteId) {
++	if (getenv("SCI_LOG_GFX"))
++		warning("SCI_LOG_GFX drawPicture pic=%d", pictureId);
+ 	// Set up custom per-picture palette mod
+ 	doCustomPicPalette(_screen, pictureId);
+ 
+@@ -106,6 +110,27 @@
+ 
+ 	// Reset custom per-picture palette mod
+ 	_screen->setCurPaletteMapValue(0);
++
++	// CHT tooling: dump each drawn pic (display buffer + palette) as PPM, to identify
++	// which resource holds baked-art UI labels. Triggered by SCI_DUMP_PIC=<dir>.
++	if (const char *dir = getenv("SCI_DUMP_PIC")) {
++		const int w = _screen->getDisplayWidth(), h = _screen->getDisplayHeight();
++		const byte *buf = _screen->getDisplayBuffer();
++		const Palette &pal = _palette->_sysPalette;
++		Common::String fn = Common::String::format("%s/pic_%d.ppm", dir, pictureId);
++		Common::DumpFile out;
++		if (out.open(Common::Path(fn))) {
++			Common::String hdr = Common::String::format("P6\n%d %d\n255\n", w, h);
++			out.write(hdr.c_str(), hdr.size());
++			for (int i = 0; i < w * h; i++) {
++				const Color &c = pal.colors[buf[i]];
++				byte rgb[3] = { c.r, c.g, c.b };
++				out.write(rgb, 3);
++			}
++			out.finalize();
++			out.close();
++		}
++	}
+ }
+ 
+ // This one is the only one that updates screen!
+--- engines/sci/graphics/screen.h	2026-06-20 09:43:09.833596804 +0800
++++ engines/sci/graphics/screen.h	2026-07-09 18:57:06.059518810 +0800
+@@ -78,6 +78,7 @@
+ 	uint16 getScriptHeight() { return _scriptHeight; }
+ 	uint16 getDisplayWidth() { return _displayWidth; }
+ 	uint16 getDisplayHeight() { return _displayHeight; }
++	const byte *getDisplayBuffer() { return _displayScreen; } // CHT tooling: pic dump
+ 	byte getColorWhite() { return _colorWhite; }
+ 	byte getColorDefaultVectorData() { return _colorDefaultVectorData; }
+ 
 --- engines/sci/sci.cpp	2026-06-20 09:43:09.836779220 +0800
 +++ engines/sci/sci.cpp	2026-07-09 17:18:48.120606483 +0800
 @@ -19,6 +19,9 @@
