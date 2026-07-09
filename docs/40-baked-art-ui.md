@@ -49,7 +49,31 @@
   - `10` 把接下來 `YYYYYY` 像素填成 literal 流的下一個 byte 值(RLE run)。
   - `11` skip `YYYYYY` 像素(透明,clearKey)。
 
-### 待做:SCI1.1 view 編碼器(路線 A 的關鍵瓶頸)
+### ✅ 已完成:SCI1.1 view 解碼/編碼器 `tools/sci_view.py`(2026-07-09,已把關)
+
+end-to-end 驗證通過:round-trip 逐像素相符(對 ScummVM 自身 decoder)、view 908 spike 把 cel 0
+換成「英雄」中文 → 編出 `908.v56` patch → **實機引擎載入覆蓋生效**(重 dump bytes 不同、cel 變中文)。
+
+**關鍵格式事實(從 ScummVM 源碼查證,非猜測):**
+- SCI1.1 VGA view header:`headerSize=u16LE(0)+2`、`loopCount=u8(2)`、`paletteOffset=u32LE(8)`、
+  `loopSize=u8(12)`、`celSize=u8(13)`(view 908 的 celSize=**36**,非直覺的 32;assert 只要求 ≥32)。
+- cel table entry:width/height/displaceX/displaceY 在 0/2/4/6(i16 LE)、clearKey 在 byte 8、
+  `offsetRLE` 在 24(u32)、`offsetLiteral` 在 28(u32)。
+- embedded palette 依 `GfxPalette::createFromData()` SCI1.1 分支(palOffset=37、colorStart=data[25]、
+  count=u16LE(29)、format byte 在 data[32])。
+- **loose view patch header**(最需小心):`ResourceManager::processPatch()` 對 view(SCI11)算
+  `patchDataOffset = 2 + byte@offset3 + 22 + 2`;把 offset3 的 extra-header byte 設 0 → 固定 **26-byte header**
+  (byte0=`0x80`,其餘補零)+ raw view data。**與 `SCI_DUMP_RES` 的 2-byte wrapper 不同**。
+  patch 副檔名 = `v56`(`s_resourceTypeSuffixes`),故檔名 `908.v56`。
+
+**`tools/sci_view.py` 指令**(走 docker uv):
+- `decode <view> <outdir> --view-id <id>`:每 cel dump 成 PNG+PPM。
+- `verify <view> <ref_dir> --view-id <id>`:對照 PPM,不符 exit≠0。
+- `roundtrip <view> [--output raw] [--patch out]`:decode→原封重編→decode,斷言 identity。
+- `encode <view> <out> [--replace loop,cel,png ...] [--patch]`:重編,可換入 RGBA PNG(alpha 0→透明/clearKey);
+  `--patch` 包成 26-byte header 的 loose SCI patch。
+
+### 下一步:scale 到各 baked-art 標籤
 規格:讀原 view → 解碼各 cel → 換掉目標 cel 的 bitmap(改好的中文圖,RGB→palette index)→
 **全 literal run 重編**(每列用 `00/01` control + literal 流,透明像素用 `11` skip)→ 重組 view 資源
 (header/loop 表/cel 表/embedded palette,offset 全部重算)→ 輸出 loose view patch(`<id>.v56`/ScummVM SCI patch)。
