@@ -20,9 +20,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("tsv")
     ap.add_argument("outdir")
-    ap.add_argument("--size", type=int, default=14, help="字型高度(px)")
-    ap.add_argument("--font", default="/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
-    ap.add_argument("--face", type=int, default=0)
+    ap.add_argument("--size", type=int, default=15, help="字型高度(px)")
+    # 預設古籍風明體(AR PL UMing TW);face 2 = TW
+    ap.add_argument("--font", default="/usr/share/fonts/truetype/arphic/uming.ttc")
+    ap.add_argument("--face", type=int, default=2)
     a = ap.parse_args()
     H = a.size
 

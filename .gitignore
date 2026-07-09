@@ -30,3 +30,4 @@ dist/
 
 # 抽字中間物(可由 extract_strings.py 重生)
 translation/skeleton.tsv
+translation/todo/
