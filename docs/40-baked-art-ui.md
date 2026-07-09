@@ -34,6 +34,28 @@
 - engine `SCI_DUMP_PIC=<dir>`:把每張畫完的 pic(display buffer + 調色盤)dump 成 PPM,供識別/比對。
 - 待建(依路線):view dump→PNG、SCI view 編碼器(路線 A);畫面偵測 + 座標表(路線 B)。
 
-## 建議
+## 路線 A 進度(2026-07-09)
 
-先做 **B(引擎疊繪)** 打通角色創建畫面當 spike(投報快、不卡 SCI codec),驗證觀感;若要求「原生美術」再評估 A。
+### 已完成:抽取/識別工具(engine hooks,全走 ScummVM 自身 decoder)
+- `SCI_DUMP_ALLVIEWS=<dir>`:啟動時把**全部 view**(6678 cel)解碼 dump 成 PPM,確定性、不靠導航。
+- `SCI_DUMP_VIEW` / `SCI_DUMP_PIC` / `SCI_LOG_GFX`:執行期 dump/記錄。
+- 已識別範例:**view 908** = 標題副標「SO YOU WANT TO BE A HERO」發光動畫(8 cel);
+  類別 banner(fighter/magic user/thief)、角色創建屬性標籤為其他 view(待逐一比對 6678 cel PPM)。
+
+### 已確認:SCI1.1 VGA cel 格式(來自 ScummVM `unpackCelData`)
+- SCI1.1 VGA cel 用**雙流**:RLE control 流(`offsetRLE`)+ literal 像素流(`offsetLiteral`)。
+- RLE control byte = `XXYYYYYY`:
+  - `00` copy 接下來 `YYYYYY` 個 literal 像素;`01` copy `YYYYYY+64` 個。
+  - `10` 把接下來 `YYYYYY` 像素填成 literal 流的下一個 byte 值(RLE run)。
+  - `11` skip `YYYYYY` 像素(透明,clearKey)。
+
+### 待做:SCI1.1 view 編碼器(路線 A 的關鍵瓶頸)
+規格:讀原 view → 解碼各 cel → 換掉目標 cel 的 bitmap(改好的中文圖,RGB→palette index)→
+**全 literal run 重編**(每列用 `00/01` control + literal 流,透明像素用 `11` skip)→ 重組 view 資源
+(header/loop 表/cel 表/embedded palette,offset 全部重算)→ 輸出 loose view patch(`<id>.v56`/ScummVM SCI patch)。
+- 避開自寫 RLE 壓縮:除透明用 `11` skip 外,一律 `00/01` literal(等同未壓縮),ScummVM 照樣解。
+- palette:沿用原 view 的 embedded palette(中文重繪時限定用原 palette 既有色,避免 RGB→index 失真)。
+- 驗證迴圈:編出 patch → 放遊戲目錄 → `SCI_DUMP_ALLVIEWS` 或實機 → 比對渲染。
+- spike 目標:先換 **view 908** 一個 cel 成中文,end-to-end 驗證編碼器,再 scale 到各標籤(重繪可分派)。
+
+> 路線 B(引擎疊繪)已評估為備案,見上；使用者選 A(原生美術)。
