@@ -16,6 +16,20 @@ from PIL import Image, ImageFont, ImageDraw
 
 WIDTH = 16  # Big5Font 固定字寬 kChineseTraditionalWidth
 
+# LLM 常產出、但不在 Big5 的字元 → 正規化成 Big5 等價標點(安全網)
+NORMALIZE = {
+    "⋯": "…",  # ⋯(midline)→ …(Big5 a14b)
+    "‘": "「", "’": "」",  # ‘’ → 「」
+    "“": "『", "”": "』",  # “” → 『』
+    "―": "—",  # ― → —
+    "·": "‧",  # ·(middle dot)→ ‧
+}
+
+def normalize(s):
+    for a, b in NORMALIZE.items():
+        s = s.replace(a, b)
+    return s
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("tsv")
@@ -40,8 +54,21 @@ def main():
             en, zh = line.split("\t", 1)
             if not zh or zh == en:
                 continue  # 未翻譯
+            zh = normalize(zh)
             rows.append((en, zh))
             chars.update(zh)
+
+    # 非 Big5 字元警告(會在字型/runtime 遺失)
+    nonbig5 = {}
+    for _, zh in rows:
+        for ch in zh:
+            try:
+                ch.encode("big5")
+            except UnicodeEncodeError:
+                nonbig5[ch] = nonbig5.get(ch, 0) + 1
+    if nonbig5:
+        sys.stderr.write("WARN 非 Big5 字元(會遺失,請修譯文或加進 NORMALIZE):" +
+                         " ".join(f"{c!r}×{n}" for c, n in nonbig5.items()) + "\n")
 
     # 1) runtime tsv(Big5)
     runtime = a.outdir + "/translation.tsv"
