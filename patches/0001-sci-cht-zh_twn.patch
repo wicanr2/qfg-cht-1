@@ -234,7 +234,7 @@
  	byte getColorDefaultVectorData() { return _colorDefaultVectorData; }
  
 --- engines/sci/sci.cpp	2026-06-20 09:43:09.836779220 +0800
-+++ engines/sci/sci.cpp	2026-07-09 19:31:07.297749812 +0800
++++ engines/sci/sci.cpp	2026-07-09 19:46:20.219405605 +0800
 @@ -19,6 +19,9 @@
   *
   */
@@ -260,8 +260,8 @@
 +	// CHT tooling: dump decompressed text/message/script resources as patch files
 +	// (uses ScummVM's own SCI decompressor). Triggered by SCI_DUMP_RES=<dir>; quits after.
 +	if (const char *dumpDir = getenv("SCI_DUMP_RES")) {
-+		const ResourceType dumpTypes[] = { kResourceTypeText, kResourceTypeMessage, kResourceTypeFont, kResourceTypeScript, kResourceTypeHeap };
-+		for (int ti = 0; ti < 5; ++ti) {
++		const ResourceType dumpTypes[] = { kResourceTypeText, kResourceTypeMessage, kResourceTypeFont, kResourceTypeScript, kResourceTypeHeap, kResourceTypeView, kResourceTypePic };
++		for (int ti = 0; ti < 7; ++ti) {
 +			Common::List<ResourceId> list = _resMan->listResources(dumpTypes[ti], -1);
 +			for (Common::List<ResourceId>::iterator it = list.begin(); it != list.end(); ++it) {
 +				Resource *r = _resMan->findResource(*it, 0);
