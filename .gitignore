@@ -1,0 +1,26 @@
+# 原遊戲資源(版權,絕不入庫)
+game/
+*.7z
+*.zip
+*.rar
+*.img
+RESOURCE.*
+*.SCR
+*.HEP
+*.MSG
+*.DRV
+*.EXE
+
+# 抽取/建置中間物
+extract/
+build/
+out/
+*.o
+*.a
+
+# ScummVM 原始碼(外部,不入本庫)
+scummvm-src/
+
+# Python
+.venv/
+__pycache__/
