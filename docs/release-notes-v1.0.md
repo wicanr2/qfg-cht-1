@@ -13,7 +13,8 @@ Sierra 1989 年經典《Hero's Quest》(後改名 *Quest for Glory I*)的**繁�
 | `QFG1-CHT-EGA-x86_64.AppImage` | Linux | EGA |
 | `QFG1-CHT-VGA-windows-x86_64.zip` | Windows | VGA |
 | `QFG1-CHT-EGA-windows-x86_64.zip` | Windows | EGA |
-| macOS(VGA/EGA)| macOS | 由 GitHub Actions 產出(見 Actions 頁 build-macos 的 artifacts) |
+| `QFG1-CHT-VGA-macos-universal.dmg` | macOS(Apple Silicon + Intel universal)| VGA |
+| `QFG1-CHT-EGA-macos-universal.dmg` | macOS(Apple Silicon + Intel universal)| EGA |
 | `qfg1-cht-dev-setup-*.tar.gz` | 開發者 | 引擎 patch + build 腳本 |
 
 ## 使用方式
