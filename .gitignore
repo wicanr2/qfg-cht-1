@@ -35,3 +35,5 @@ translation/todo/
 # baked-art spike scratch(可重建)
 spike/
 out/
+translation/ega/todo/
+dist_ega/
