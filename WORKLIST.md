@@ -10,13 +10,13 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 | M1 端到端打通 | ✅ 引擎 `ZH_TWN`+Big5 + TSV 內容替換,實機驗證 |
 | **M2 VGA 全文字中文化** | ✅ **4480/4521 則(99%)** 對白/敘述/訊息 |
 | M2 古風字型 | ✅ AR PL UMing TW 明體 15px,烘 2486 字 Big5 |
-| **路線A view/pic 編碼器** | ✅ `tools/sci_view.py`(view),view 908 spike 實機驗證(cel→「英雄」) |
+| **路線A view/pic 編碼器** | ✅ `tools/sci_view.py`(view + **pic**),view 908 / pic 904 spike 皆實機驗證(cel→「英雄」、Strength→「力量」) |
 | **M3 EGA 文字中文化** | ✅ **3878/3883(99%)**,1561 沿用 VGA + 2317 haiku;實機驗證版權文 |
-| M2-D VGA baked-art 重繪 | 🔲 **進行中**:角色創建 = pic 904(13 屬性名)+ view 802(start/cancel/Points Available) |
+| M2-D VGA baked-art 重繪 | 🔲 **進行中**:編碼器已就緒(view+pic),待逐標籤重繪成中文——角色創建 = pic 904(13 屬性名)+ view 802(start/cancel/Points Available) |
 | M4 多平台打包 | 🔲 未開始 |
 
 ## VGA baked-art 已識別(角色創建畫面)
-- **pic 904**(320×200 背景圖):烘了 13 個屬性/技能名(Strength/Intelligence/…/Climbing)+ Name:/Experience/Health/Stamina/Magic Points。→ 需 **pic 編輯**(`sci_view.py` 目前只做 view,要加 pic 模式)。
+- **pic 904**(320×200 背景圖):烘了 13 個屬性/技能名(Strength/Intelligence/…/Climbing)+ Name:/Experience/Health/Stamina/Magic Points。**pic 解碼/編碼器已完成並實機驗證**(`sci_view.py pic-decode/pic-verify/pic-roundtrip/pic-encode`,細節見 `docs/40-baked-art-ui.md`);下一步是把 13 個標籤逐一重繪成中文明體(目前只 spike 驗證了 Strength→「力量」一個標籤,其餘 12 個 + Name:/Experience/Health/Stamina/Magic Points 待做)。
 - **view 802**:start(loop3/cel0 82×13 @9,157)、cancel(loop4/cel0 82×14 @9,170)、Points Available(loop7/cel0 110×14 @102,140)+ 屬性小雕像 + mnemonic 疊字。→ 用 `sci_view.py encode --replace`。
 - **EGA 版角色創建屬性名 = 純文字(text.204)**,已隨 M3 文字化,不必改圖。
 

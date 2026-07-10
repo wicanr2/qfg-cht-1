@@ -317,20 +317,40 @@ def decode_cel(view: SCIView, loopNo: int, celNo: int) -> bytearray:
     return bitmap
 
 
+def indices_to_rgb(indices: bytes, palette) -> bytes:
+    """palette->colors[index] for every byte in `indices`, no transparency masking."""
+    out = bytearray(len(indices) * 3)
+    for i, idx in enumerate(indices):
+        r, g, b = palette[idx]
+        out[i * 3] = r
+        out[i * 3 + 1] = g
+        out[i * 3 + 2] = b
+    return bytes(out)
+
+
 def cel_to_rgb(view: SCIView, bitmap: bytes, width: int, height: int) -> bytes:
     """Equivalent of GfxView::dumpCelsToDir()'s pixel loop: palette->colors[index],
     no transparency masking (matches the PPM ground-truth files exactly)."""
     if view.palette is None:
         raise ValueError("view has no embedded palette; system palette (999) rendering "
                           "not implemented in this tool")
-    pal = view.palette
-    out = bytearray(width * height * 3)
-    for i, idx in enumerate(bitmap):
-        r, g, b = pal[idx]
-        out[i * 3] = r
-        out[i * 3 + 1] = g
-        out[i * 3 + 2] = b
-    return bytes(out)
+    return indices_to_rgb(bitmap, view.palette)
+
+
+def read_ppm_rgb(path: Path):
+    """Parse a P6 PPM file, return (width, height, raw_rgb_bytes)."""
+    raw = path.read_bytes()
+    newlines = 0
+    hdr_end = 0
+    for idx, b in enumerate(raw):
+        if b == 0x0A:
+            newlines += 1
+            if newlines == 3:
+                hdr_end = idx + 1
+                break
+    header = raw[:hdr_end].split()
+    width, height = int(header[1]), int(header[2])
+    return width, height, raw[hdr_end:]
 
 
 # --------------------------------------------------------------------------------
@@ -464,6 +484,318 @@ def make_patch(view_data: bytes) -> bytes:
     header[0] = 0x80  # patch type byte -> (0x80 & 0x7F) == 0 -> kResourceTypeView
     header[3] = 0x00  # extra header byte count N
     return bytes(header) + view_data
+
+
+# --------------------------------------------------------------------------------
+# SCI1.1 VGA picture (kResourceTypePic) -- header parsing, visual decode, re-encode
+#
+# Reverse-engineered from ScummVM source (read-only reference, not modified):
+#   scummvm-src/engines/sci/graphics/picture.cpp
+#     - GfxPicture::draw()          headerSize field == 0x26 selects the SCI1.1 branch
+#     - GfxPicture::drawSci11Vga()  pic header layout (below)
+#     - GfxPicture::drawCelData()   SCI1.1 pics hardcode clearColor = getColorWhite()
+#                                    (index 255) regardless of any cel-header clearKey
+#   scummvm-src/engines/sci/graphics/ports.cpp
+#     - GfxPorts::GfxPorts()        `int16 offTop = 10;` (~line 87) -- the default top
+#       offset of the picture window (`_picWind`), left untouched for QFG1VGA on PC (the
+#       GID_QFG1VGA switch case only special-cases the *Mac* interpreter's status-bar
+#       sizing quirk). This is the standard SCI "10-pixel status bar" convention: pics
+#       are drawn starting at absolute screen row 10, leaving rows [0,10) as the
+#       icon/status bar, which drawPicture()/clearScreen() never touch.
+#   scummvm-src/engines/sci/graphics/palette16.cpp
+#     - GfxPalette::GfxPalette()    _sysPalette defaults: index 0 -> black (used),
+#                                    index 255 -> white (used) -- never overwritten by a
+#                                    picture's own embedded palette when that palette's
+#                                    table doesn't cover the index (see pic 904:
+#                                    color_start=0 color_count=248, i.e. indices 248-255
+#                                    fall back to these constructor defaults).
+#   scummvm-src/engines/sci/resource/resource.cpp
+#     - ResourceManager::processPatch()  kResourceTypePic branch, _volVersion <
+#       kResVersionSci2 (true for QFG1VGA/SCI1.1): identical byte-3 + kViewHeaderSize(22)
+#       + kExtraHeaderSize(2) formula as kResourceTypeView -> same 26-byte patch header.
+#       s_resourceTypeSuffixes[kResourceTypePic] == "p56" -> patch filename "<id>.p56".
+#     - Resource::writeToStream()   SCI_DUMP_RES dump wrapper: [type|0x80, headerSize=0]
+#       + raw decompressed resource data (2-byte wrapper, NOT the 26-byte patch header).
+#       For pic (kResourceTypePic == 1), type|0x80 == 0x81 -- matches the sample dump.
+#
+# =====================================================================================
+# Pic resource data byte layout (drawSci11Vga(), picture.cpp ~line 92-137)
+# =====================================================================================
+#   0x00 u16   headerSizeField      (must be 0x26 for the SCI1.1 VGA pic format; this is
+#                                    literally what GfxPicture::draw() switches on)
+#   0x03 u8    priorityBandCount    (must be 14)
+#   0x04 u8    hasCel               (1 = picture carries an embedded cel/bitmap)
+#   0x10 u32   vectorDataOffset     (vector/line data runs from here to EOF)
+#   0x1C u32   paletteDataOffset    (embedded palette, GfxPalette::createFromData() format)
+#   0x20 u32   celHeaderOffset
+#   0x28 ..    priorityBandData: u16 * priorityBandCount (28 bytes for count=14)
+#
+#   Cel header (at celHeaderOffset), same fields as a view's per-cel table entry:
+#     +0x00 u16  width
+#     +0x02 u16  height
+#     +0x18 u32  offsetRLE          (rlePos, absolute, relative to start of pic data)
+#     +0x1C u32  offsetLiteral      (literalPos, absolute)
+#   clearColor for the cel bitmap is NOT read from the cel header -- SCI1.1 hardcodes it
+#   to getColorWhite() == 255 (drawCelData()); unpacking otherwise follows the exact same
+#   VGA dual-stream RLE format as views (unpack_cel_bitmap() above, reused verbatim).
+#
+# Observed layout for pic 904 (out/dump/pic.904, dump-wrapper stripped):
+#   headerSizeField=0x26 priorityBandCount=14 hasCel=1
+#   celHeaderOffset=72 (cel header spans [72,114)) offsetRLE=114 offsetLiteral=5168
+#   cel width=320 height=190 (== 200 - offTop(10): the art fills exactly the viewport
+#   below the status bar)
+#   paletteDataOffset=57188 (color_start=0 color_count=248 format=CONSTANT)
+#   vectorDataOffset=57975, vector_size=1 byte (0xFF terminator only -- draws nothing)
+#   File order: [fixed header+priority bands 0:72] [cel header 72:114] [RLE 114:5168]
+#   [literal 5168:57188] [palette 57188:57975] [vector 57975:57976]
+#
+# Empirically verified (2026-07): decode_pic_visual_rgb() below reproduces
+# out/pics/pic_904.ppm byte-for-byte (SCI_DUMP_PIC's dump of the actual rendered
+# display buffer + system palette) using exactly: rows [0,10) hardcoded black (the
+# untouched status bar), rows [10,200) = clearScreen(white) base with the cel's 320x190
+# bitmap blitted on top at (0,10), skipping clearColor(255) pixels (none occur in pic
+# 904, but the general VGA-pic convention allows them), palette-mapped via the pic's own
+# embedded table with indices 0/255 defaulting to sysPalette's black/white when the
+# table doesn't cover them.
+#
+# Patch file format: identical wrapper to views (see module docstring), except the type
+# byte is 0x81 ((0x81 & 0x7F) == 1 == kResourceTypePic) and the loose-patch extension is
+# "p56" instead of "v56" (e.g. pic 904's patch is "904.p56").
+# =====================================================================================
+
+SCREEN_WIDTH = 320
+SCREEN_HEIGHT = 200
+PIC_DISPLAY_TOP = 10  # ports.cpp GfxPorts::GfxPorts() default offTop, unchanged for
+                       # QFG1VGA on PC (see comment block above)
+
+
+def parse_pic_palette(data: bytes):
+    """Same byte layout as parse_palette() (GfxPalette::createFromData(), SCI1.1 'new'
+    format), but additionally defaults any index NOT covered by the embedded table to
+    GfxPalette's own constructor defaults (palette16.cpp): index 0 -> black, index 255 ->
+    white. SCI1.1 pictures always draw with clearColor = getColorWhite() (index 255)
+    hardcoded, and per-picture embedded palettes commonly only cover a truncated range
+    (pic 904: color_start=0 color_count=248, leaving 248-255 uncovered) -- kept as a
+    separate function from parse_palette() (used by views) to avoid changing that
+    function's behavior for callers that don't want this defaulting."""
+    if len(data) < 37:
+        return None
+
+    if (data[0] == 0 and data[1] == 1) or (
+        data[0] == 0 and data[1] == 0 and struct.unpack_from('<H', data, 29)[0] == 0
+    ):
+        pal_format = 0
+        pal_offset = 260
+        color_start = 0
+        color_count = 256
+    else:
+        pal_format = data[32]
+        pal_offset = 37
+        color_start = data[25]
+        color_count = struct.unpack_from('<H', data, 29)[0]
+
+    colors = [None] * 256
+    off = pal_offset
+    if pal_format == 1:  # CONSTANT: r,g,b
+        need = pal_offset + 3 * color_count
+        if len(data) < need:
+            return None
+        for c in range(color_start, color_start + color_count):
+            colors[c] = (data[off], data[off + 1], data[off + 2])
+            off += 3
+    else:  # VARIABLE: used,r,g,b
+        need = pal_offset + 4 * color_count
+        if len(data) < need:
+            return None
+        for c in range(color_start, color_start + color_count):
+            off += 1
+            colors[c] = (data[off], data[off + 1], data[off + 2])
+            off += 3
+
+    if colors[0] is None:
+        colors[0] = (0, 0, 0)
+    if colors[255] is None:
+        colors[255] = (255, 255, 255)
+    for i in range(256):
+        if colors[i] is None:
+            colors[i] = (0, 0, 0)
+    return colors
+
+
+class SCIPicture:
+    def __init__(self, data: bytes):
+        self.data = data
+        self._parse()
+
+    def _parse(self):
+        d = self.data
+        self.headerSizeField = struct.unpack_from('<H', d, 0)[0]
+        if self.headerSizeField != 0x26:
+            raise ValueError(
+                f"not a SCI1.1 VGA pic (headerSize field={self.headerSizeField:#x}, "
+                f"expected 0x26 -- see GfxPicture::draw()'s switch on headerSize)")
+        self.priorityBandCount = d[3]
+        if self.priorityBandCount != 14:
+            raise ValueError(
+                f"unexpected priorityBandCount {self.priorityBandCount} (expected 14)")
+        self.hasCel = d[4]
+        self.vectorDataOffset = struct.unpack_from('<I', d, 16)[0]
+        self.paletteDataOffset = struct.unpack_from('<I', d, 28)[0]
+        self.celHeaderOffset = struct.unpack_from('<I', d, 32)[0]
+
+        self.palette = None
+        if self.paletteDataOffset:
+            self.palette = parse_pic_palette(d[self.paletteDataOffset:])
+
+        self.cel = None
+        if self.hasCel:
+            ch = self.celHeaderOffset
+            width = struct.unpack_from('<H', d, ch)[0]
+            height = struct.unpack_from('<H', d, ch + 2)[0]
+            offsetRLE = struct.unpack_from('<I', d, ch + 24)[0]
+            offsetLiteral = struct.unpack_from('<I', d, ch + 28)[0]
+            # clearKey hardcoded to white (255) -- SCI1.1 pic quirk, see comment block.
+            self.cel = Cel(width, height, 0, 0, 255, offsetRLE, offsetLiteral, ch)
+
+
+def decode_pic_visual_rgb(pic: 'SCIPicture') -> bytes:
+    """Render the full 320x200 display-buffer-equivalent RGB image (see comment block
+    above for the empirically-verified compositing rule): rows [0,PIC_DISPLAY_TOP)
+    black (untouched status bar), rows [PIC_DISPLAY_TOP,200) start white (post-
+    clearScreen) with the cel blitted on top, clearColor(255) pixels left as white."""
+    w_scr, h_scr = SCREEN_WIDTH, SCREEN_HEIGHT
+    rgb = bytearray(w_scr * h_scr * 3)  # rows [0,PIC_DISPLAY_TOP) default to (0,0,0)
+
+    for y in range(PIC_DISPLAY_TOP, h_scr):
+        base = (y * w_scr) * 3
+        rgb[base:base + w_scr * 3] = bytes([255]) * (w_scr * 3)
+
+    if pic.cel is not None:
+        if pic.palette is None:
+            raise ValueError("pic has no embedded palette; cannot render")
+        bitmap = unpack_cel_bitmap(pic.data, pic.cel)
+        cw, ch = pic.cel.width, pic.cel.height
+        clear = pic.cel.clearKey
+        pal = pic.palette
+        for y in range(ch):
+            sy = PIC_DISPLAY_TOP + y
+            if sy >= h_scr:
+                break
+            row_off = y * cw
+            for x in range(min(cw, w_scr)):
+                v = bitmap[row_off + x]
+                if v == clear:
+                    continue
+                r, g, b = pal[v]
+                idx = (sy * w_scr + x) * 3
+                rgb[idx] = r
+                rgb[idx + 1] = g
+                rgb[idx + 2] = b
+    return bytes(rgb)
+
+
+def image_to_pic_bitmap(img, palette, cel_width: int, cel_height: int, clear_key: int) -> bytes:
+    """Take a full 320x200 replacement PNG (the same canvas pic-decode produces),
+    crop out the cel's own region (rows [PIC_DISPLAY_TOP, PIC_DISPLAY_TOP+cel_height)),
+    and map it to palette indices via image_to_indices() (exact/nearest RGB match,
+    alpha==0 -> clear_key)."""
+    if img.size != (SCREEN_WIDTH, SCREEN_HEIGHT):
+        raise SystemExit(f"--replace image is {img.size}, expected "
+                          f"{(SCREEN_WIDTH, SCREEN_HEIGHT)} (full pic canvas)")
+    cropped = img.crop((0, PIC_DISPLAY_TOP, cel_width, PIC_DISPLAY_TOP + cel_height))
+    return image_to_indices(cropped, palette, clear_key)
+
+
+def rebuild_pic(pic: 'SCIPicture', replacement_indices):
+    """Rebuild the full pic resource byte-for-byte, keeping the fixed header/priority
+    bands/cel-header region at its original absolute offsets (only the cel header's
+    offsetRLE/offsetLiteral fields are overwritten), re-encoding the cel's bitmap stream
+    (full-literal, same technique as rebuild_view()/encode_cel_streams()), and then
+    relocating the palette and vector-data blocks (copied verbatim, content unchanged)
+    after it, patching paletteDataOffset/vectorDataOffset to their new positions.
+
+    `replacement_indices`: None to keep the original decoded bitmap (round-trip), or a
+    bytes/bytearray of length cel.width*cel.height to substitute a new bitmap.
+
+    Assumes the pic 904-observed file order (RLE, literal, palette, vector data, with
+    palette immediately followed by vector data and vector data running to EOF) --
+    asserted below; a pic with a different block order would need this generalized.
+    """
+    d = pic.data
+    if pic.cel is None:
+        raise ValueError("pic has no cel data (hasCel=0); nothing to re-encode")
+    cel = pic.cel
+
+    if replacement_indices is not None:
+        assert len(replacement_indices) == cel.width * cel.height, (
+            f"replacement bitmap has {len(replacement_indices)} bytes, "
+            f"expected {cel.width * cel.height}")
+        bitmap = replacement_indices
+    else:
+        bitmap = unpack_cel_bitmap(d, cel)
+
+    assert pic.paletteDataOffset and pic.vectorDataOffset > pic.paletteDataOffset, (
+        "rebuild_pic() assumes palette data precedes vector data in the source file "
+        "(observed layout for pic 904); this pic's layout differs and needs a "
+        "generalized implementation")
+
+    meta_end = min(cel.offsetRLE, cel.offsetLiteral)
+    out = bytearray(d[:meta_end])
+
+    rle_bytes, lit_bytes = encode_cel_streams(bitmap, cel.clearKey)
+    new_rle_off = len(out)
+    out += rle_bytes
+    new_lit_off = len(out)
+    out += lit_bytes
+    struct.pack_into('<I', out, cel.table_offset + 24, new_rle_off)
+    struct.pack_into('<I', out, cel.table_offset + 28, new_lit_off)
+
+    palette_bytes = d[pic.paletteDataOffset:pic.vectorDataOffset]
+    new_pal_off = len(out)
+    out += palette_bytes
+    struct.pack_into('<I', out, 28, new_pal_off)
+
+    vector_bytes = d[pic.vectorDataOffset:]
+    new_vec_off = len(out)
+    out += vector_bytes
+    struct.pack_into('<I', out, 16, new_vec_off)
+
+    return bytes(out)
+
+
+def _looks_like_pic_header(d: bytes) -> bool:
+    return (len(d) >= 4 and struct.unpack_from('<H', d, 0)[0] == 0x26 and d[3] == 14)
+
+
+def load_pic_data(path: Path) -> bytes:
+    """Strip whichever wrapper is present and return raw pic resource data (starting at
+    the headerSizeField==0x26 byte):
+      - 2-byte SCI_DUMP_RES dump wrapper ([type|0x80, headerSize=0x00]) -- used by
+        out/dump/pic.NNN (mirrors load_view_data()).
+      - 26-byte loose-patch wrapper (processPatch()'s kResourceTypePic formula) -- this
+        is what SCI_DUMP_RES itself re-emits for a resource that was *loaded from* a
+        loose patch file (Resource::writeToStream() reuses the patch's own _header/
+        _headerSize instead of synthesizing the plain 2-byte one), e.g. when re-dumping
+        pic.904 after installing a 904.p56 patch to verify it took effect.
+    Falls back to treating the file as already-unwrapped raw pic data."""
+    raw = path.read_bytes()
+    if len(raw) >= 2 and (raw[0] & 0x80) and _looks_like_pic_header(raw[2:]):
+        return raw[2:]
+    if len(raw) >= 26 and (raw[0] & 0x80) and _looks_like_pic_header(raw[26:]):
+        return raw[26:]
+    return raw
+
+
+def make_pic_patch(pic_data: bytes) -> bytes:
+    """Wrap raw pic resource data into a loose ScummVM SCI patch file body: identical
+    26-byte header formula as views (processPatch()'s kResourceTypePic branch for
+    _volVersion < kResVersionSci2 matches kResourceTypeView byte-for-byte), except the
+    patch type byte is 0x81 ((0x81 & 0x7F) == 1 == kResourceTypePic, see
+    s_resTypeMapSci0[] in resource.cpp) and the file extension is "p56"."""
+    header = bytearray(26)
+    header[0] = 0x81  # patch type byte -> (0x81 & 0x7F) == 1 -> kResourceTypePic
+    header[3] = 0x00  # extra header byte count N
+    return bytes(header) + pic_data
 
 
 # --------------------------------------------------------------------------------
@@ -651,6 +983,120 @@ def cmd_roundtrip(args):
     sys.exit(0 if ok else 1)
 
 
+# --------------------------------------------------------------------------------
+# CLI commands -- pic (kResourceTypePic)
+# --------------------------------------------------------------------------------
+
+def cmd_pic_decode(args):
+    data = load_pic_data(Path(args.input))
+    pic = SCIPicture(data)
+    rgb = decode_pic_visual_rgb(pic)
+    out_path = Path(args.output)
+    if out_path.suffix.lower() == '.ppm':
+        write_ppm(out_path, SCREEN_WIDTH, SCREEN_HEIGHT, rgb)
+    else:
+        if Image is None:
+            raise SystemExit("Pillow required to write PNG (or use a .ppm output path)")
+        write_png(out_path, SCREEN_WIDTH, SCREEN_HEIGHT, rgb)
+    print(f"decoded pic visual ({SCREEN_WIDTH}x{SCREEN_HEIGHT}) to {out_path}")
+
+
+def cmd_pic_verify(args):
+    """Compare our decode against a reference PPM (e.g. out/pics/pic_904.ppm), pixel-exact."""
+    data = load_pic_data(Path(args.input))
+    pic = SCIPicture(data)
+    rgb = decode_pic_visual_rgb(pic)
+
+    ref_w, ref_h, ref_rgb = read_ppm_rgb(Path(args.ref))
+    if (ref_w, ref_h) != (SCREEN_WIDTH, SCREEN_HEIGHT):
+        print(f"  [WARN] reference is {ref_w}x{ref_h}, expected "
+              f"{SCREEN_WIDTH}x{SCREEN_HEIGHT}")
+
+    if rgb == ref_rgb:
+        print(f"  [ok] {SCREEN_WIDTH}x{SCREEN_HEIGHT} pixel-exact match")
+        print("verify: ALL OK")
+        sys.exit(0)
+
+    diffs = 0
+    first = None
+    for i in range(min(len(rgb), len(ref_rgb))):
+        if rgb[i] != ref_rgb[i]:
+            diffs += 1
+            if first is None:
+                first = i
+    if first is not None:
+        px = first // 3
+        print(f"  [MISMATCH] {diffs} differing byte(s), first at byte {first} "
+              f"(pixel {px % SCREEN_WIDTH},{px // SCREEN_WIDTH}) "
+              f"ours={tuple(rgb[first - first % 3:first - first % 3 + 3])} "
+              f"ref={tuple(ref_rgb[first - first % 3:first - first % 3 + 3])}")
+    else:
+        print(f"  [MISMATCH] length differs ours={len(rgb)} ref={len(ref_rgb)}")
+    print("verify: MISMATCHES FOUND")
+    sys.exit(1)
+
+
+def cmd_pic_roundtrip(args):
+    """decode -> re-encode (unchanged) -> decode again; compare pixel-for-pixel."""
+    data = load_pic_data(Path(args.input))
+    pic = SCIPicture(data)
+
+    orig_rgb = decode_pic_visual_rgb(pic)
+    orig_bitmap = bytes(unpack_cel_bitmap(pic.data, pic.cel)) if pic.cel else None
+
+    new_data = rebuild_pic(pic, None)
+    pic2 = SCIPicture(new_data)
+    new_rgb = decode_pic_visual_rgb(pic2)
+    new_bitmap = bytes(unpack_cel_bitmap(pic2.data, pic2.cel)) if pic2.cel else None
+
+    ok = (orig_bitmap == new_bitmap) and (orig_rgb == new_rgb)
+    if ok:
+        print(f"  [ok] cel ({pic.cel.width}x{pic.cel.height}) and full "
+              f"{SCREEN_WIDTH}x{SCREEN_HEIGHT} render round-trip identical")
+    else:
+        if orig_bitmap != new_bitmap:
+            for i in range(min(len(orig_bitmap), len(new_bitmap))):
+                if orig_bitmap[i] != new_bitmap[i]:
+                    print(f"  [MISMATCH] cel bitmap byte {i}: "
+                          f"orig={orig_bitmap[i]} new={new_bitmap[i]}")
+                    break
+        if orig_rgb != new_rgb:
+            print("  [MISMATCH] rendered RGB canvas differs")
+
+    print(f"round-trip: {'ALL IDENTICAL' if ok else 'MISMATCHES FOUND'}")
+
+    if args.output:
+        Path(args.output).write_bytes(new_data)
+        print(f"wrote re-encoded raw pic resource: {args.output}")
+    if args.patch:
+        Path(args.patch).write_bytes(make_pic_patch(new_data))
+        print(f"wrote re-encoded patch file: {args.patch}")
+
+    sys.exit(0 if ok else 1)
+
+
+def cmd_pic_encode(args):
+    data = load_pic_data(Path(args.input))
+    pic = SCIPicture(data)
+    if pic.cel is None:
+        raise SystemExit("pic has no cel data (hasCel=0); --replace not applicable")
+    if Image is None:
+        raise SystemExit("Pillow required for --replace (PNG input)")
+
+    img = Image.open(args.replace)
+    bitmap = image_to_pic_bitmap(img, pic.palette, pic.cel.width, pic.cel.height,
+                                  pic.cel.clearKey)
+    new_data = rebuild_pic(pic, bitmap)
+
+    out_path = Path(args.output)
+    if args.patch:
+        out_path.write_bytes(make_pic_patch(new_data))
+        print(f"wrote pic patch file: {out_path} ({out_path.stat().st_size} bytes)")
+    else:
+        out_path.write_bytes(new_data)
+        print(f"wrote raw pic resource: {out_path} ({out_path.stat().st_size} bytes)")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -684,6 +1130,33 @@ def main():
                     help='wrap output as a loose ScummVM SCI patch file '
                          '(default: write raw view resource data)')
     p.set_defaults(func=cmd_encode)
+
+    p = sub.add_parser('pic-decode', help='decode a SCI1.1 VGA pic visual to a full 320x200 PNG/PPM')
+    p.add_argument('input', help='pic file (dump-wrapped or raw)')
+    p.add_argument('output', help='output image path (.png or .ppm)')
+    p.set_defaults(func=cmd_pic_decode)
+
+    p = sub.add_parser('pic-verify', help='compare pic-decode output against a reference PPM')
+    p.add_argument('input', help='pic file (dump-wrapped or raw)')
+    p.add_argument('ref', help='reference 320x200 PPM (e.g. out/pics/pic_904.ppm)')
+    p.set_defaults(func=cmd_pic_verify)
+
+    p = sub.add_parser('pic-roundtrip', help='decode -> re-encode (unchanged) -> decode, compare')
+    p.add_argument('input', help='pic file (dump-wrapped or raw)')
+    p.add_argument('--output', help='write re-encoded raw pic resource here')
+    p.add_argument('--patch', help='write re-encoded loose patch file here')
+    p.set_defaults(func=cmd_pic_roundtrip)
+
+    p = sub.add_parser('pic-encode', help="re-encode a pic, replacing the cel's visual bitmap")
+    p.add_argument('input', help='pic file (dump-wrapped or raw)')
+    p.add_argument('output')
+    p.add_argument('--replace', required=True,
+                    help='full 320x200 PNG (RGBA; alpha==0 -> transparent/clearColor) '
+                         'to replace the pic visual with')
+    p.add_argument('--patch', action='store_true',
+                    help='wrap output as a loose ScummVM SCI patch file '
+                         '(default: write raw pic resource data)')
+    p.set_defaults(func=cmd_pic_encode)
 
     args = ap.parse_args()
     args.func(args)
