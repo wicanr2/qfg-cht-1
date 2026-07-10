@@ -88,7 +88,7 @@
 - [x] **M2 VGA 全文字**:4521 則抽字,**4480 則已翻(99%)**;古風明體(AR PL UMing TW 15px)
 - [x] **M3 EGA 全文字**:3883+ 則,**99%**(含 `script.*` 內嵌選單/死亡訊息/對白;1561 則沿用 VGA 共用文本)
 - [x] **路線 A 編碼器**:自製 SCI1.1 view/pic 解碼/編碼器(`tools/sci_view.py`),把烘進美術圖的英文標籤換成中文
-- [ ] **VGA baked-art 重繪**:角色創建羊皮紙 pic 904 的 13 個屬性名 + view 802 的按鈕(進行中)
+- [x] **VGA baked-art 重繪**:角色創建畫面 pic 904(13 屬性/技能名 + 姓名/經驗/生命/體力/法力)+ view 802(開始/取消/可分配點數),實機驗證
 - [ ] **M4** 多平台打包交付
 
 ### 實機畫面
@@ -96,7 +96,10 @@
 | | 英文原版 | 繁體中文化 |
 |---|---|---|
 | VGA 版權框 | ![en](docs/images/m1-spike-copyright-en.png) | ![cht](docs/images/m1-spike-copyright-cht.png) |
+| VGA 角色創建(baked-art) | ![cc-en](docs/images/m2-charcreate-en.png) | ![cc-cht](docs/images/m2-charcreate-cht.png) |
 | EGA 版權框 | — | ![ega](docs/images/m3-ega-copyright-cht.png) |
+
+> 角色創建畫面的屬性名(力量/智力/…)與「可分配點數」原本是**烘進背景美術圖與 view 的英文**,非文字資源;由自製 SCI1.1 view/pic 編碼器逐一挖除英文、重繪中文明體。
 
 ### 兩版、兩種難關
 

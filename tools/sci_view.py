@@ -357,12 +357,35 @@ def read_ppm_rgb(path: Path):
 # File-level helpers (patch / dump wrapper handling)
 # --------------------------------------------------------------------------------
 
+def _looks_like_view_header(d: bytes) -> bool:
+    """Plausibility check for 'd starts at a raw SCI1.1 view resource header'.
+    headerSize/loopSize/celSize must fall within the ranges initData() relies on;
+    a 26-byte all-but-byte0 patch wrapper (mostly zero, byte0=0x80) fails this
+    (headerSize would compute to 130, well outside a real view's ~16-40 byte header)."""
+    if len(d) < 16:
+        return False
+    header_size = struct.unpack_from('<H', d, 0)[0] + 2
+    loop_count = d[2]
+    loop_size = d[12]
+    cel_size = d[13]
+    return 8 <= header_size <= 64 and 1 <= loop_count <= 32 and loop_size >= 12 and cel_size >= 32
+
+
 def load_view_data(path: Path) -> bytes:
-    """Strip the 2-byte SCI_DUMP_RES wrapper ([0x80, 0x00]) if present; otherwise
-    treat the file as raw view resource data."""
+    """Strip whichever wrapper is present and return raw view resource data:
+      - 2-byte SCI_DUMP_RES dump wrapper ([type|0x80, headerSize=0x00]) -- used by
+        out/dump/view.NNN for a view loaded straight from the base game archive.
+      - 26-byte loose-patch wrapper (processPatch()'s kResourceTypeView formula) -- this
+        is what SCI_DUMP_RES re-emits for a resource that was *loaded from* a loose
+        patch file (Resource::writeToStream() reuses the patch's own header instead of
+        synthesizing the plain 2-byte one), e.g. re-dumping view.802 after installing an
+        802.v56 patch to verify it took effect. Mirrors load_pic_data()'s handling.
+    Falls back to treating the file as already-unwrapped raw view data."""
     raw = path.read_bytes()
-    if len(raw) >= 2 and raw[0] == 0x80 and raw[1] == 0x00:
+    if len(raw) >= 2 and raw[0] == 0x80 and raw[1] == 0x00 and _looks_like_view_header(raw[2:]):
         return raw[2:]
+    if len(raw) >= 26 and (raw[0] & 0x80) and _looks_like_view_header(raw[26:]):
+        return raw[26:]
     return raw
 
 

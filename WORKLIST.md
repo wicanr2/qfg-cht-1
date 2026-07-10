@@ -12,8 +12,9 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 | M2 古風字型 | ✅ AR PL UMing TW 明體 15px,烘 2486 字 Big5 |
 | **路線A view/pic 編碼器** | ✅ `tools/sci_view.py`(view + **pic**),view 908 / pic 904 spike 皆實機驗證(cel→「英雄」、Strength→「力量」) |
 | **M3 EGA 文字中文化** | ✅ **3878/3883(99%)**,1561 沿用 VGA + 2317 haiku;實機驗證版權文 |
-| M2-D VGA baked-art 重繪 | 🔲 **進行中**:編碼器已就緒(view+pic),待逐標籤重繪成中文——角色創建 = pic 904(13 屬性名)+ view 802(start/cancel/Points Available) |
+| **M2-D VGA baked-art 重繪** | ✅ 角色創建畫面:pic 904(13 屬性/技能名 + 姓名/經驗/生命/體力/法力)+ view 802(開始/取消/可分配點數),實機驗證(`out/shots/cc_03.png`)。Points Available 殘留已補修(`repaint/802_fixed.v56`) |
 | M4 多平台打包 | 🔲 未開始 |
+| 推廣影片 | ✅ `out/video/qfg1_cht_promo.mp4`(44s,VGA/EGA 穿插 + 原版配樂;版權素材 gitignore) |
 
 ## VGA baked-art 已識別(角色創建畫面)
 - **pic 904**(320×200 背景圖):烘了 13 個屬性/技能名(Strength/Intelligence/…/Climbing)+ Name:/Experience/Health/Stamina/Magic Points。**pic 解碼/編碼器已完成並實機驗證**(`sci_view.py pic-decode/pic-verify/pic-roundtrip/pic-encode`,細節見 `docs/40-baked-art-ui.md`);下一步是把 13 個標籤逐一重繪成中文明體(目前只 spike 驗證了 Strength→「力量」一個標籤,其餘 12 個 + Name:/Experience/Health/Stamina/Magic Points 待做)。

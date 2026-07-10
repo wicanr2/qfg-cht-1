@@ -43,3 +43,8 @@ out/shots_spike/
 # 手冊掃描(版權,不入庫)
 manual_scan/
 manual/
+
+# baked-art 重繪工作暫存(最終 patch 已進 art/vga/)
+repaint/
+# EGA script 抽字暫存(103 已併入 tsv,餘 16 為 parser 指令不譯)
+translation/ega/todo_script.tsv
