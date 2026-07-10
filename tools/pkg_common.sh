@@ -19,6 +19,8 @@ stage_cht_data() {
   else
     if [ -f "$ROOT/dist_ega/translation.tsv" ]; then base="$ROOT/dist_ega"; else base="$ROOT/dist-cht/ega"; fi
     cp "$base/translation.tsv" "$base/qfg1_big5.fnt" "$out/"
+    # EGA baked-art:SCI0 view patch(view.100 選單海報 / view.506 職業選擇)
+    cp "$ROOT"/art/ega/view.* "$out/" 2>/dev/null || true
   fi
   echo ">>    staged $(ls "$out" | wc -l) 個中文資料檔 → $out"
 }
