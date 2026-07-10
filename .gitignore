@@ -41,8 +41,8 @@ spike_pic/
 out/shots_spike/
 
 # 手冊掃描(版權,不入庫)
-manual_scan/
-manual/
+/manual_scan/
+/manual/
 
 # baked-art 重繪工作暫存(最終 patch 已進 art/vga/)
 repaint/
