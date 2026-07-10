@@ -52,3 +52,6 @@ repaint2/
 
 # 打包工具快取(appimagetool 等下載的第三方 binary,不入庫)
 tools/.cache/
+
+# 含原始遊戲資源的完整可玩包(版權,絕不入庫、絕不上 GitHub)
+dist-all/
