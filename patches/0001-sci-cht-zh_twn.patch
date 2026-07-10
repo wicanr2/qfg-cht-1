@@ -234,7 +234,7 @@
  	byte getColorDefaultVectorData() { return _colorDefaultVectorData; }
  
 --- engines/sci/sci.cpp	2026-06-20 09:43:09.836779220 +0800
-+++ engines/sci/sci.cpp	2026-07-09 19:46:20.219405605 +0800
++++ engines/sci/sci.cpp	2026-07-10 14:46:25.306679011 +0800
 @@ -19,6 +19,9 @@
   *
   */
@@ -308,7 +308,7 @@
  #ifdef ENABLE_SCI32
  	if (getSciVersion() >= SCI_VERSION_2) {
  		// SCI32 graphic objects creation
-@@ -831,7 +876,50 @@
+@@ -831,7 +876,66 @@
  	return _gameDescription->gameId;
  }
  
@@ -319,6 +319,20 @@
 +	if (it == _chtTranslation.end())
 +		return nullptr;
 +	return it->_value.c_str();
++}
++
++static Common::String unescapeCht(const Common::String &in) {
++	Common::String out;
++	for (uint i = 0; i < in.size(); ++i) {
++		if (in[i] == '\\' && i + 1 < in.size()) {
++			char n = in[i + 1];
++			if (n == 'n') { out += '\n'; ++i; continue; }
++			if (n == 't') { out += '\t'; ++i; continue; }
++			if (n == '\\') { out += '\\'; ++i; continue; }
++		}
++		out += in[i];
++	}
++	return out;
 +}
 +
 +void SciEngine::loadChtTranslation() {
@@ -342,7 +356,9 @@
 +		Common::String val(tab + 1);
 +		if (val.empty())
 +			continue;
-+		_chtTranslation[key] = val;
++		// Unescape "\\n"->newline and "\\\\"->backslash (SCI0/EGA strings contain
++		// hard line breaks, which cannot sit literally in a line-based TSV).
++		_chtTranslation[unescapeCht(key)] = unescapeCht(val);
 +		++count;
 +	}
 +	debug(1, "CHT: loaded %d translation entries", count);
