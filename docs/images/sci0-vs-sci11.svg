@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="'Noto Sans CJK TC','PingFang TC','Microsoft JhengHei',sans-serif">
+  <rect width="900" height="520" fill="#ffffff"/>
+  <text x="450" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#222">為什麼 EGA baked-art 比 VGA 難:SCI0(向量 pic)vs SCI1.1(bitmap pic)</text>
+
+  <!-- SCI0 column -->
+  <rect x="30" y="60" width="400" height="410" rx="12" fill="#fbf4ee" stroke="#c98a4a" stroke-width="2"/>
+  <text x="230" y="88" text-anchor="middle" font-size="17" font-weight="bold" fill="#a25e1e">SCI0 · EGA(1988–90)</text>
+  <text x="230" y="110" text-anchor="middle" font-size="12.5" fill="#8a5a2a">英雄傳奇1 EGA / Hero's Quest</text>
+
+  <rect x="52" y="128" width="356" height="96" rx="8" fill="#ffffff" stroke="#d9b48a" stroke-width="1.2"/>
+  <text x="66" y="150" font-size="13.5" font-weight="bold" fill="#7a4a10">根本約束:16 色 · 320×200 · 640KB DOS</text>
+  <text x="66" y="172" font-size="12" fill="#6a5030">整張 bitmap = 320×200×4bit ≈ 32KB,</text>
+  <text x="66" y="190" font-size="12" fill="#6a5030">數百張 pic 存不下 → 改存「畫法」而非像素。</text>
+  <text x="66" y="212" font-size="12" fill="#6a5030">同一串指令還能同時畫 visual/priority/control。</text>
+
+  <rect x="52" y="236" width="356" height="88" rx="8" fill="#fff" stroke="#d9b48a" stroke-width="1.2"/>
+  <text x="66" y="258" font-size="13.5" font-weight="bold" fill="#7a4a10">pic = 向量繪圖指令流</text>
+  <text x="66" y="279" font-size="12" fill="#6a5030">set_color / draw_line / fill / pattern …</text>
+  <text x="66" y="298" font-size="12" fill="#6a5030">「Wanted Hero」海報字 = 一連串筆畫指令</text>
+  <text x="66" y="315" font-size="12" fill="#6a5030">view = 4-bit EGA cel(不同 RLE)</text>
+
+  <rect x="52" y="336" width="356" height="116" rx="8" fill="#fdeee8" stroke="#c96a3a" stroke-width="1.4"/>
+  <text x="66" y="358" font-size="13.5" font-weight="bold" fill="#b0431a">中文化難點</text>
+  <text x="66" y="380" font-size="12" fill="#8a3a1a">向量字 → 中文方塊字無法用幾條線/填色表達,</text>
+  <text x="66" y="398" font-size="12" fill="#8a3a1a">要改指令流重繪 ≈ 不可行(frontier)。</text>
+  <text x="66" y="420" font-size="12" fill="#8a3a1a">若是嵌入 pic 的 EGA cell 或獨立 view →</text>
+  <text x="66" y="438" font-size="12" fill="#8a3a1a">建 SCI0 EGA cel codec 才有機會編。</text>
+
+  <!-- SCI1.1 column -->
+  <rect x="470" y="60" width="400" height="410" rx="12" fill="#eef6ff" stroke="#4a90d9" stroke-width="2"/>
+  <text x="670" y="88" text-anchor="middle" font-size="17" font-weight="bold" fill="#1e5fa0">SCI1.1 · VGA(1990–92)</text>
+  <text x="670" y="110" text-anchor="middle" font-size="12.5" fill="#2a6cb0">英雄傳奇1 VGA / Quest for Glory I</text>
+
+  <rect x="492" y="128" width="356" height="96" rx="8" fill="#ffffff" stroke="#a9c9ea" stroke-width="1.2"/>
+  <text x="506" y="150" font-size="13.5" font-weight="bold" fill="#1e5fa0">根本改變:256 色 · 調色板 · 記憶體變大</text>
+  <text x="506" y="172" font-size="12" fill="#33507a">256 色的繪畫/掃描美術無法向量畫 →</text>
+  <text x="506" y="190" font-size="12" fill="#33507a">pic 直接存成一張 8-bit bitmap。</text>
+  <text x="506" y="212" font-size="12" fill="#33507a">磁碟/記憶體成長使 bitmap 可負擔。</text>
+
+  <rect x="492" y="236" width="356" height="88" rx="8" fill="#fff" stroke="#a9c9ea" stroke-width="1.2"/>
+  <text x="506" y="258" font-size="13.5" font-weight="bold" fill="#1e5fa0">pic = bitmap cel(+ 內嵌調色板)</text>
+  <text x="506" y="279" font-size="12" fill="#33507a">view = 8-bit cel,雙串流 RLE</text>
+  <text x="506" y="298" font-size="12" fill="#33507a">烘進圖的英文字 = 一塊像素區域</text>
+  <text x="506" y="315" font-size="12" fill="#33507a">.v56 / .p56 loose patch(26-byte header)</text>
+
+  <rect x="492" y="336" width="356" height="116" rx="8" fill="#eafaf0" stroke="#33a06f" stroke-width="1.4"/>
+  <text x="506" y="358" font-size="13.5" font-weight="bold" fill="#1d7a4f">中文化手法(已驗證)</text>
+  <text x="506" y="380" font-size="12" fill="#227a52">自製 sci_view.py 解/編碼(對 ScummVM 解碼器</text>
+  <text x="506" y="398" font-size="12" fill="#227a52">逐像素驗證當 oracle)。</text>
+  <text x="506" y="420" font-size="12" fill="#227a52">像素區可「擦掉英文→重繪中文」:金色花體</text>
+  <text x="506" y="438" font-size="12" fill="#227a52">cel · pic inpaint(模糊塗抹保底紋)。</text>
+
+  <text x="450" y="500" text-anchor="middle" font-size="12.5" fill="#666">同一款遊戲、同一種「烘進圖的英文字」,難度天差地別——根源是 1988 EGA 的硬體約束逼出「向量 pic」,而 bitmap 才能「挖掉重畫」。</text>
+</svg>

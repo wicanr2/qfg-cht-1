@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="470" viewBox="0 0 900 470" font-family="'Noto Sans CJK TC','PingFang TC','Microsoft JhengHei',sans-serif">
+  <rect width="900" height="470" fill="#ffffff"/>
+  <text x="450" y="34" text-anchor="middle" font-size="21" font-weight="bold" fill="#222">SCI 中文化資料流:內容比對替換(不解壓、不散布原資源)</text>
+
+  <!-- 原遊戲資源 -->
+  <rect x="30" y="70" width="180" height="86" rx="10" fill="#f4f4f4" stroke="#bbb" stroke-width="1.5"/>
+  <text x="120" y="98" text-anchor="middle" font-size="15" font-weight="bold" fill="#333">原遊戲資源</text>
+  <text x="120" y="120" text-anchor="middle" font-size="12.5" fill="#666">text.* / message.*</text>
+  <text x="120" y="138" text-anchor="middle" font-size="12.5" fill="#666">script.*(內嵌字串)</text>
+
+  <!-- dump -->
+  <rect x="30" y="196" width="180" height="70" rx="10" fill="#fff3e6" stroke="#e8912a" stroke-width="1.5"/>
+  <text x="120" y="222" text-anchor="middle" font-size="14" font-weight="bold" fill="#b3660a">① 抽字(離線)</text>
+  <text x="120" y="244" text-anchor="middle" font-size="12" fill="#8a5a1a">SCI_DUMP_RES hook</text>
+  <text x="120" y="259" text-anchor="middle" font-size="11.5" fill="#8a5a1a">用引擎自身解壓器</text>
+
+  <!-- TSV -->
+  <rect x="30" y="306" width="180" height="80" rx="10" fill="#eef6ff" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="120" y="332" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e5fa0">② 人工翻譯 TSV</text>
+  <text x="120" y="354" text-anchor="middle" font-size="12" fill="#2a6cb0">英文 \t 中文</text>
+  <text x="120" y="371" text-anchor="middle" font-size="11.5" fill="#2a6cb0">UTF-8,可版控</text>
+
+  <!-- build_cht -->
+  <rect x="300" y="306" width="200" height="80" rx="10" fill="#eef6ff" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="400" y="330" text-anchor="middle" font-size="14" font-weight="bold" fill="#1e5fa0">③ build_cht.py</text>
+  <text x="400" y="350" text-anchor="middle" font-size="11.5" fill="#2a6cb0">Big5 編碼 · 簡→繁正規化</text>
+  <text x="400" y="366" text-anchor="middle" font-size="11.5" fill="#2a6cb0">全形標點 · 烘明體字型</text>
+  <text x="400" y="380" text-anchor="middle" font-size="11.5" fill="#2a6cb0">\n 硬換行跳脫(SCI0)</text>
+
+  <!-- runtime data -->
+  <rect x="560" y="306" width="200" height="80" rx="10" fill="#eafaf0" stroke="#33a06f" stroke-width="1.5"/>
+  <text x="660" y="332" text-anchor="middle" font-size="14" font-weight="bold" fill="#1d7a4f">runtime 中文資料</text>
+  <text x="660" y="354" text-anchor="middle" font-size="12" fill="#227a52">translation.tsv(Big5)</text>
+  <text x="660" y="371" text-anchor="middle" font-size="12" fill="#227a52">qfg1_big5.fnt</text>
+
+  <!-- engine hook -->
+  <rect x="560" y="70" width="310" height="200" rx="10" fill="#fff7f0" stroke="#e8912a" stroke-width="2"/>
+  <text x="715" y="96" text-anchor="middle" font-size="15" font-weight="bold" fill="#b3660a">④ 引擎繪字前攔截(patch)</text>
+  <rect x="580" y="112" width="270" height="52" rx="8" fill="#ffffff" stroke="#e8b57a" stroke-width="1.2"/>
+  <text x="715" y="133" text-anchor="middle" font-size="12.5" fill="#7a4a10">GfxText16::draw() → 查表</text>
+  <text x="715" y="151" text-anchor="middle" font-size="12" fill="#9a6a2a">英文原字當 key,替換成 Big5</text>
+  <rect x="580" y="176" width="270" height="76" rx="8" fill="#ffffff" stroke="#e8b57a" stroke-width="1.2"/>
+  <text x="715" y="197" text-anchor="middle" font-size="12.5" fill="#7a4a10">GfxFontChinese 繪字</text>
+  <text x="715" y="216" text-anchor="middle" font-size="11.5" fill="#9a6a2a">ASCII(≤0xFF)→ 原 SCI 字型</text>
+  <text x="715" y="233" text-anchor="middle" font-size="11.5" fill="#9a6a2a">Big5 雙位元組 → Graphics::Big5Font</text>
+  <text x="715" y="248" text-anchor="middle" font-size="11" fill="#b58a5a">(--language=tw 啟用 ZH_TWN 分支)</text>
+
+  <!-- arrows -->
+  <defs><marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#888"/></marker></defs>
+  <line x1="120" y1="156" x2="120" y2="194" stroke="#888" stroke-width="1.8" marker-end="url(#ar)"/>
+  <line x1="120" y1="266" x2="120" y2="304" stroke="#888" stroke-width="1.8" marker-end="url(#ar)"/>
+  <line x1="210" y1="346" x2="298" y2="346" stroke="#888" stroke-width="1.8" marker-end="url(#ar)"/>
+  <line x1="500" y1="346" x2="558" y2="346" stroke="#888" stroke-width="1.8" marker-end="url(#ar)"/>
+  <line x1="660" y1="304" x2="695" y2="272" stroke="#33a06f" stroke-width="1.8" marker-end="url(#ar)"/>
+  <text x="742" y="292" font-size="11" fill="#1d7a4f">放進遊戲目錄</text>
+
+  <text x="450" y="440" text-anchor="middle" font-size="12.5" fill="#666">核心第一性原理:文字送顯示前必經「繪字」單一咽喉點 → 在此 hook,就不必解壓/重寫資源格式;只交付 TSV+字型+引擎 patch,原資源不動、不散布。</text>
+</svg>
