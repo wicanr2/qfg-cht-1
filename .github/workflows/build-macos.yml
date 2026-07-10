@@ -28,6 +28,18 @@ on:
 env:
   SDL_VER: "2.30.9"
   MIN_OS: "11.0"
+  # SCI-only 精簡:關掉所有外部媒體/格式/網路庫。理由:
+  #  1) scummvm-static 對這些庫要 MacPorts 式「靜態 .a」,runner 沒有(libz.a/libbz2.a 是系統庫,brew 無 .a)。
+  #  2) brew 的 .a 是 arm64-only,x86_64 弧(Rosetta)連進去會架構不符。
+  # QFG1 SCI 只需 SDL2(自編 universal)+ 內建 nuked-opl(AdLib)+ 內建 Big5Font,不需 freetype/vorbis/png…。
+  LEAN_FLAGS: >-
+    --disable-ogg --disable-vorbis --disable-tremor --disable-flac --disable-mad
+    --disable-faad --disable-mpcdec --disable-openmpt --disable-mikmod
+    --disable-fluidsynth --disable-fluidlite --disable-sonivox
+    --disable-theoradec --disable-vpx --disable-mpeg2 --disable-a52
+    --disable-png --disable-jpeg --disable-gif --disable-freetype2 --disable-fribidi
+    --disable-zlib --disable-libcurl --disable-cloud --disable-enet --disable-sdlnet
+    --disable-discord --disable-sparkle --disable-lua
 
 jobs:
   macos-universal:
@@ -89,7 +101,7 @@ jobs:
           export CXXFLAGS="-arch arm64 -mmacosx-version-min=${MIN_OS}"
           export LDFLAGS="$CXXFLAGS"
           ./configure --disable-all-engines --enable-engine=sci --disable-detection-full \
-            --disable-mt32emu --enable-release --with-sdl-prefix="$RUNNER_TEMP/sdl-arm64"
+            --disable-mt32emu --enable-release $LEAN_FLAGS --with-sdl-prefix="$RUNNER_TEMP/sdl-arm64"
           grep -q "^ENABLE_SCI" config.mk || { echo "### sci engine 未編入(arm64) ###"; exit 12; }
           grep -q "^#undef WITHOUT_SDL" config.h || { echo "### SDL 未偵測到(arm64) ###"; exit 13; }
           make -j"$(sysctl -n hw.ncpu)" scummvm-static
@@ -103,7 +115,7 @@ jobs:
             export CXXFLAGS='-arch x86_64 -mmacosx-version-min=${MIN_OS}'
             export LDFLAGS=\"\$CXXFLAGS\"
             ./configure --disable-all-engines --enable-engine=sci --disable-detection-full \
-              --disable-mt32emu --enable-release --with-sdl-prefix='$RUNNER_TEMP/sdl-x86_64'
+              --disable-mt32emu --enable-release $LEAN_FLAGS --with-sdl-prefix='$RUNNER_TEMP/sdl-x86_64'
             grep -q '^ENABLE_SCI' config.mk || { echo '### sci engine 未編入(x86_64) ###'; exit 12; }
             grep -q '^#undef WITHOUT_SDL' config.h || { echo '### SDL 未偵測到(x86_64) ###'; exit 13; }
             make -j\"\$(sysctl -n hw.ncpu)\" scummvm-static
