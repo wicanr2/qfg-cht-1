@@ -13,7 +13,7 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 | **路線A view/pic 編碼器** | ✅ `tools/sci_view.py`(view + **pic**),view 908 / pic 904 spike 皆實機驗證(cel→「英雄」、Strength→「力量」) |
 | **M3 EGA 文字中文化** | ✅ **3878/3883(99%)**,1561 沿用 VGA + 2317 haiku;實機驗證版權文 |
 | **M2-D VGA baked-art 重繪** | ✅ 角色創建畫面:pic 904(13 屬性/技能名 + 姓名/經驗/生命/體力/法力)+ view 802(開始/取消/可分配點數),實機驗證(`out/shots/cc_03.png`)。Points Available 殘留已補修(`repaint/802_fixed.v56`) |
-| M4 多平台打包 | 🔲 未開始 |
+| **M4 多平台打包** | ✅ 本機 5 檔(AppImage×2/Windows zip×2/dev-setup)已產出並驗證可執行;macOS 2 檔靠 CI(workflow 已寫,未跑) |
 | 推廣影片 | ✅ `out/video/qfg1_cht_promo.mp4`(44s,VGA/EGA 穿插 + 原版配樂;版權素材 gitignore) |
 
 ## VGA baked-art 已識別(角色創建畫面)
@@ -28,6 +28,27 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 ## 交付原則(硬)
 - 中文化**僅放 ScummVM patch**:引擎改動(`patches/`)+ `dist/`(translation.tsv + qfg1_big5.fnt)+ view/pic patch。原遊戲資源不入庫。
 - 完整性:EGA/VGA 兩版都要交付。
+
+## M4 打包(2026-07-10)
+
+`tools/package.sh` 一鍵組裝,輸出到 `dist/packages/`(本機驗證過的 5 個檔):
+- `QFG1-CHT-VGA-x86_64.AppImage` / `QFG1-CHT-EGA-x86_64.AppImage`:手工 AppDir(非 linuxdeploy)+
+  `tools/pkg_collect_libs.py` 遞迴 `ldd` 收集 56 個共享庫(排除 glibc 核心)+ `appimagetool
+  --appimage-extract-and-run`(免 FUSE)。已用 Xvfb 實機跑過,builtin 主題 fallback 正常顯示。
+- `QFG1-CHT-VGA-windows-x86_64.zip` / `QFG1-CHT-EGA-windows-x86_64.zip`:`scummvm.exe` +
+  `SDL2.dll` + `libwinpthread-1.dll` + 中文資料 + `.bat` 啟動器(互動輸入遊戲路徑,自動 xcopy 中文資料
+  + `--language=tw` 啟動)。
+- `qfg1-cht-dev-setup-YYYYMMDD.tar.gz`:`patches/`(含新增的 `UPSTREAM_COMMIT.txt` pinned commit,
+  已用 GitHub 內容比對驗證)+ `tools/apply_patches.sh`(現支援 `$SRC` 不存在時自動 clone+checkout)+
+  `docker/` + `BUILD.md`。
+
+macOS(`.github/workflows/build-macos.yml` + `tools/package_macos_data.sh`)未在本機跑(不能在
+Linux 交叉編譯 macOS),邏輯已用假 `.app` 本機驗證中文資料注入 + tar 重打包正常;workflow 本身
+未經 CI 實跑驗證,首次執行可能需微調(見 BUILD.md §3 與 workflow 內註解)。
+
+**發現**:ScummVM 對 SCI 引擎有 builtin GUI 主題 fallback(缺 `scummclassic.zip` 等 GUI data 檔會印
+warning 但正常運作,不影響遊戲本身),故三平台打包都不需要附帶 ScummVM 自己的 GUI theme/engine-data
+檔(先前 sibling 專案 qog-2 因 AGS 需要而全附,本專案 SCI-only 裁剪版不需要)。
 
 ## 下一步(接續就做):M2-D1 角色創建畫面 baked-art 中文化
 
