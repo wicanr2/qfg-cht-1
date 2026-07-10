@@ -40,6 +40,7 @@ env:
     --disable-png --disable-jpeg --disable-gif --disable-freetype2 --disable-fribidi
     --disable-zlib --disable-libcurl --disable-cloud --disable-enet --disable-sdlnet
     --disable-discord --disable-sparkle --disable-lua
+    --disable-tts --disable-taskbar --disable-system-dialogs --disable-system-printing
 
 jobs:
   macos-universal:
