@@ -48,3 +48,4 @@ manual/
 repaint/
 # EGA script 抽字暫存(103 已併入 tsv,餘 16 為 parser 指令不譯)
 translation/ega/todo_script.tsv
+repaint2/
