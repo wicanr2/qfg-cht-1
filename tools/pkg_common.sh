@@ -7,14 +7,18 @@
 
 # 中文資料包 staging:$1=vga|ega  $2=輸出目錄
 stage_cht_data() {
-  local edition="$1" out="$2"
+  local edition="$1" out="$2" base
   rm -rf "$out"; mkdir -p "$out"
   if [ "$edition" = vga ]; then
-    cp "$ROOT/dist/translation.tsv" "$ROOT/dist/qfg1_big5.fnt" "$out/"
+    # 本地 build 優先用剛產的 dist/;CI checkout(dist/ 為 gitignore 之 build 輸出、不存在)
+    # 退回版控內的 dist-cht/vga/(committed Big5 runtime 快照)。
+    if [ -f "$ROOT/dist/translation.tsv" ]; then base="$ROOT/dist"; else base="$ROOT/dist-cht/vga"; fi
+    cp "$base/translation.tsv" "$base/qfg1_big5.fnt" "$out/"
     # glob 當下所有 view/pic patch,別寫死清單(父代理仍在陸續增加 baked-art)
     cp "$ROOT"/art/vga/*.p56 "$ROOT"/art/vga/*.v56 "$out/" 2>/dev/null || true
   else
-    cp "$ROOT/dist_ega/translation.tsv" "$ROOT/dist_ega/qfg1_big5.fnt" "$out/"
+    if [ -f "$ROOT/dist_ega/translation.tsv" ]; then base="$ROOT/dist_ega"; else base="$ROOT/dist-cht/ega"; fi
+    cp "$base/translation.tsv" "$base/qfg1_big5.fnt" "$out/"
   fi
   echo ">>    staged $(ls "$out" | wc -l) 個中文資料檔 → $out"
 }
