@@ -10,10 +10,19 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 | M1 端到端打通 | ✅ 引擎 `ZH_TWN`+Big5 + TSV 內容替換,實機驗證 |
 | **M2 VGA 全文字中文化** | ✅ **4480/4521 則(99%)** 對白/敘述/訊息 |
 | M2 古風字型 | ✅ AR PL UMing TW 明體 15px,烘 2486 字 Big5 |
-| **路線A view 編碼器** | ✅ `tools/sci_view.py`,view 908 spike 實機驗證(cel→「英雄」) |
-| M2-D baked-art 全量重繪 | 🔲 **進行中:先攻角色創建畫面** |
-| M3 EGA 版 | 🔲 未開始 |
+| **路線A view/pic 編碼器** | ✅ `tools/sci_view.py`(view),view 908 spike 實機驗證(cel→「英雄」) |
+| **M3 EGA 文字中文化** | ✅ **3878/3883(99%)**,1561 沿用 VGA + 2317 haiku;實機驗證版權文 |
+| M2-D VGA baked-art 重繪 | 🔲 **進行中**:角色創建 = pic 904(13 屬性名)+ view 802(start/cancel/Points Available) |
 | M4 多平台打包 | 🔲 未開始 |
+
+## VGA baked-art 已識別(角色創建畫面)
+- **pic 904**(320×200 背景圖):烘了 13 個屬性/技能名(Strength/Intelligence/…/Climbing)+ Name:/Experience/Health/Stamina/Magic Points。→ 需 **pic 編輯**(`sci_view.py` 目前只做 view,要加 pic 模式)。
+- **view 802**:start(loop3/cel0 82×13 @9,157)、cancel(loop4/cel0 82×14 @9,170)、Points Available(loop7/cel0 110×14 @102,140)+ 屬性小雕像 + mnemonic 疊字。→ 用 `sci_view.py encode --replace`。
+- **EGA 版角色創建屬性名 = 純文字(text.204)**,已隨 M3 文字化,不必改圖。
+
+## EGA 待補
+- 只抽了 `text.*`(3883 則)。EGA 部分對白/字串可能在 `script.*` 內嵌(grep 命中),需檢查覆蓋、補抽。
+- 實機驗證更多 EGA 畫面(對白/選單);\n 硬換行畫面觀感。
 
 ## 交付原則(硬)
 - 中文化**僅放 ScummVM patch**:引擎改動(`patches/`)+ `dist/`(translation.tsv + qfg1_big5.fnt)+ view/pic patch。原遊戲資源不入庫。
