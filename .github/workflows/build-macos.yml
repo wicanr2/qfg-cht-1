@@ -36,8 +36,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: 下載 SDL2 原始碼(pinned,避免 brew sdl2-compat shim)
-        run: curl -fsSL -o "$RUNNER_TEMP/SDL2.tar.gz" \
-               "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VER}/SDL2-${SDL_VER}.tar.gz"
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/SDL2.tar.gz" \
+            "https://github.com/libsdl-org/SDL/releases/download/release-${SDL_VER}/SDL2-${SDL_VER}.tar.gz"
 
       - name: 自編 SDL2 — arm64(native)
         run: |
