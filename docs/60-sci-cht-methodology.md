@@ -93,9 +93,12 @@
 ### 這如何決定中文化難度
 
 - **VGA(bitmap)= 可做,已驗證**:烘進圖的英文字就是「一塊像素」,可以**擦掉英文、重繪中文**。本專案自製 `tools/sci_view.py` 解/編碼 SCI1.1 view(`.v56`)/pic(`.p56`),對 ScummVM 自身解碼器**逐像素驗證當 oracle**,再把角色創建屬性表、主選單海報、職業選擇、標題、credits 全部重繪成中文(手法:金色花體 cel、pic inpaint 模糊塗抹保底紋)。
-- **EGA(向量)= frontier,可能不可行**:如果海報字是 pic 的**向量筆畫**畫出來的,中文方塊字無法用幾條線/填色表達,要改指令流重繪 ≈ 不可行。只有當英文是「嵌在 pic 裡的 EGA cell」或「獨立 view cel」時,才可能靠自製 SCI0 EGA cel codec 去編輯。**這一塊本專案尚在釐清中(view vs 向量 pic 的判定決定可行性)**。
+- **EGA(SCI0)= 一開始以為是死局,實查發現可做**:直覺假設「海報字是 pic 的向量筆畫,中文方塊字無法用幾條線表達 → 不可行」。但**關鍵判定訣竅**:把 **pic 單獨 render 出來**(引擎 `SCI_DUMP_PIC` hook),看 baked 英文在不在裡面——
+  - 若在 pic 裡 → 向量筆畫,中文幾乎不可行;
+  - 若 pic 裡是**空白**(如英雄傳奇 EGA:pic 100 底下海報是空的)→ 文字是**獨立 view cel 疊上去**的,**可編**!
+  本專案 EGA 的選單海報(view 100 loop0)與職業選擇(view 506 loop1)都是 view cel。於是另建 `tools/sci0_view.py`(SCI0 EGA view 解/編碼器:4-bit EGA cel + `(run:4,color:4)` RLE,轉錄自 `view.cpp`,對真引擎 `getBitmap` 逐像素驗證 + round-trip 位元組一致),只用原 cel 既有 EGA 色重繪中文,實機驗證通過:「Wanted Hero…」→「徵求英雄/前往/史畢柏格村」、「CHOOSE YOUR CHARACTER/FIGHTER/MAGIC USER/THIEF」→「選擇你的英雄/戰士/法師/盜賊」。
 
-> 這就是為什麼「EGA 也一併中文化」聽起來理所當然,做起來卻是另一個量級的逆向工程——不是偷懶,是格式的本質難度。
+> 教訓(柵欄原則反例):別因「SCI0 pic 是向量」就假設 EGA baked-art 不可行——**先 render pic 判定文字在 pic(向量,難)還是 view(cel,可編)**。英雄傳奇 EGA 幸運地把 UI 文字都放在 view,於是 EGA 也能全 baked-art 中文化。真正無解的只有「向量筆畫畫出來的字」。
 
 ---
 
@@ -114,7 +117,7 @@
 2. `SCI_DUMP_RES` 抽字 → TSV → `build_cht.py`(Big5/正規化/全形/`\n`)。
 3. 判定版本:**SCI0(EGA)還是 SCI1.1(VGA)**——決定 baked-art 可行性與工具。
 4. VGA:`sci_view.py` 解/編 view/pic,逐像素對 ScummVM oracle 驗證後重繪。
-5. EGA:先判 baked 英文在 view(可能可編)還是向量 pic(可能不可行),再決定投入。
+5. EGA:**先 `SCI_DUMP_PIC` render pic 判定** baked 英文在 view(cel,可編,用 `tools/sci0_view.py`)還是向量 pic(難)。英雄傳奇 EGA 的 UI 文字都在 view → 已全做。
 6. 多平台打包按 §6;交付只放 patch。
 
 > 與 kb 的互補:AGOS/talkie 老遊戲中文化見 `rulebook/84`;非 ScummVM 的乾淨重寫路線見 kb `retro-game-remake`。本篇專講 **ScummVM SCI 引擎內**的 patch 式中文化。

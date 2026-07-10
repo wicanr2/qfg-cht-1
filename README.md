@@ -116,8 +116,9 @@
 - [x] **M2 VGA 全文字**:4521 則抽字,**4480 則已翻(99%)**;古風明體(AR PL UMing TW 15px)
 - [x] **M3 EGA 全文字**:3883+ 則,**99%**(含 `script.*` 內嵌選單/死亡訊息/對白;1561 則沿用 VGA 共用文本)
 - [x] **路線 A 編碼器**:自製 SCI1.1 view/pic 解碼/編碼器(`tools/sci_view.py`),把烘進美術圖的英文標籤換成中文
-- [x] **VGA baked-art 重繪**:角色創建畫面 pic 904(13 屬性/技能名 + 姓名/經驗/生命/體力/法力)+ view 802(開始/取消/可分配點數),實機驗證
-- [ ] **M4** 多平台打包交付
+- [x] **VGA baked-art 重繪**(SCI1.1):角色創建 pic 904 + view 802/506/100/908/903(屬性表·主選單海報·職業選擇·標題·credits),`tools/sci_view.py`,實機驗證
+- [x] **EGA baked-art 重繪**(SCI0):選單海報 view 100 + 職業選擇 view 506,自製 `tools/sci0_view.py`(對真引擎 getBitmap 逐像素驗證),實機驗證
+- [x] **M4** 多平台打包交付(AppImage/Windows/macOS × VGA/EGA + dev-setup,公開 Release v1.0)
 
 ### 實機畫面
 
@@ -142,11 +143,16 @@
 
 ### 實際遊玩畫面(EGA)
 
-EGA 版介面陽春,劇情通知、對白、選單文字同樣中文化(EGA 與 VGA 劇情相同、**共用約四成文本**,上方 VGA 的對白在 EGA 版一字不差)。16 色點陣中文:
+EGA 版介面陽春,但**文字與 baked 美術字同樣全中文化**(EGA 與 VGA 劇情相同、**共用約四成文本**)。連 SCI0 的選單海報、職業選擇這種烘進 view 的美術字都重繪了:
+
+| | |
+|---|---|
+| ![EGA 選單](docs/images/gp-ega-menu-cht.png) | ![EGA 職業選擇](docs/images/gp-ega-classselect.png) |
+| 主選單:海報「徵求英雄/前往/史畢柏格村」+ 序言/建立新英雄/繼續任務 | 職業選擇:選擇你的英雄 · 戰士/法師/盜賊 |
 
 ![EGA 通知](docs/images/gp-ega-notice.png)
 
-> 註:EGA 版選單的「Wanted Hero」海報與職業選擇畫面屬 SCI0 EGA baked 美術字,格式與 VGA(SCI1.1)不同,尚未重繪(見下方進度)。
+> EGA 是 SCI0,美術格式與 VGA(SCI1.1)完全不同——為此另建了一套 SCI0 EGA view 解/編碼器(`tools/sci0_view.py`)。技術原理見 [docs/60 方法論](docs/60-sci-cht-methodology.md)。
 
 ### 兩版、兩種難關
 
