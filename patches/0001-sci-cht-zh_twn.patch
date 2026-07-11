@@ -420,3 +420,104 @@
  	graphics/fontkorean.o \
  	graphics/fontsjis.o \
  	graphics/macfont.o \
+--- engines/sci/engine/kstring.cpp
++++ engines/sci/engine/kstring.cpp
+@@ -207,6 +207,58 @@
+ }
+ 
+ 
++// CHT: return the ordered sequence of printf-style conversion chars (s/d/c/x/u...)
++// in a format template, ignoring width/flag digits. Two templates with identical
++// sequences consume kFormat arguments in the same order/type.
++static Common::String sciChtFormatSpecs(const char *p) {
++	Common::String out;
++	while (*p) {
++		if (*p == '%') {
++			++p;
++			if (*p == '%') { ++p; continue; } // literal %%
++			while (*p && (Common::isDigit(*p) || *p == '-' || *p == '=')) ++p;
++			if (*p) { out += *p; ++p; }
++		} else {
++			++p;
++		}
++	}
++	return out;
++}
++
++// CHT: map a translated template's specifiers onto the original's. Succeeds when the
++// translation's specifier sequence is an in-order subsequence of the source's -- this
++// lets a translation drop source-only markers (e.g. English plural "%s" that Chinese
++// grammar omits) while still consuming the RIGHT arguments. On success returns the
++// number of translated specifiers and fills argMap[j] with the source-specifier index
++// (= source argument index) that the j-th translated specifier must consume, so kFormat
++// can compact the argument list and skip the dropped ones.
++//
++// SAFETY: kFormat reads %d/%c/%x/%u from the (remappable) `arguments[]` array but reads
++// %s directly from `argv[startarg + paramindex]`, which our remap can't reach. So a
++// dropped/shifted %s in the translation would desync. We therefore only accept a
++// NON-identity subsequence when the translation contains no %s at all (then every kept
++// specifier goes through `arguments[]` and the remap is exact). An identical specifier
++// sequence is always safe (the remap is a no-op and paramindex stays aligned). Returns
++// -1 (keep original English template) otherwise, or if there are more than maxMap specs.
++static int sciChtMapFormatSpecs(const char *src, const char *cht, int *argMap, int maxMap) {
++	Common::String s = sciChtFormatSpecs(src);
++	Common::String c = sciChtFormatSpecs(cht);
++	if ((int)c.size() > maxMap)
++		return -1;
++	uint si = 0;
++	for (uint ci = 0; ci < c.size(); ++ci) {
++		while (si < s.size() && s[si] != c[ci])
++			++si;
++		if (si >= s.size())
++			return -1;
++		argMap[ci] = (int)si;
++		++si;
++	}
++	if (s != c && c.contains('s'))
++		return -1; // dropped-spec remap with a surviving %s is unsafe (argv-direct read)
++	return (int)c.size();
++}
++
+ /*  Format(targ_address, textresnr, index_inside_res, ...)
+ ** or
+ **  Format(targ_address, heap_text_addr, ...)
+@@ -249,6 +301,20 @@
+ 
+ 	int index = (startarg == 3) ? argv[2].toUint16() : 0;
+ 	Common::String source_str = g_sci->getKernel()->lookupText(position, index);
++	// CHT: translate the format TEMPLATE (with literal %s/%d) before substitution, so
++	// player names/numbers land inside the Chinese template. The GfxText16 content-match
++	// hook cannot catch these -- it only sees the post-substitution string. The Chinese
++	// template may legitimately use fewer specifiers than the English one (dropping
++	// English-only plural markers), so we compute a subsequence arg-mapping and remap the
++	// argument list below; a template whose specifiers don't map falls back to English.
++	int chtArgMap[16];
++	int chtArgCount = -1;
++	const char *chtTemplate = g_sci->getChtTranslation(source_str.c_str());
++	if (chtTemplate) {
++		chtArgCount = sciChtMapFormatSpecs(source_str.c_str(), chtTemplate, chtArgMap, 16);
++		if (chtArgCount >= 0)
++			source_str = chtTemplate;
++	}
+ 	const char* source = source_str.c_str();
+ 
+ 	debugC(kDebugLevelStrings, "Formatting \"%s\"", source);
+@@ -260,6 +326,18 @@
+ 	for (i = startarg; i < argc; i++)
+ 		arguments[i-startarg] = argv[i].toUint16(); /* Parameters are copied to prevent overwriting */
+ 
++	// CHT: when a translated template was swapped in above, reorder the arguments so its
++	// (possibly fewer) specifiers pull the correct source arguments, skipping any the
++	// translation dropped. chtArgMap[j] is the source argument index for the j-th kept
++	// specifier; consumption below is positional so we compact them to the front.
++	if (chtArgCount >= 0) {
++		uint16 remapped[16];
++		for (int j = 0; j < chtArgCount; j++)
++			remapped[j] = arguments[chtArgMap[j]];
++		for (int j = 0; j < chtArgCount; j++)
++			arguments[j] = remapped[j];
++	}
++
+ 	while ((xfer = *source++)) {
+ 		if (xfer == '%') {
+ 			if (mode == 1) {
