@@ -43,6 +43,19 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 4. **Release `v1.0` 發布 + 對齊**:6 平台包全部帶最新譯文 + baked-art;macOS 靠 CI(`build-macos.yml` dispatch → `gh run download` → `gh release upload --clobber`)。`dist-all/` 六完整包重建。
    - **經驗沉澱**:SCI CHT 方法論(kb `scummvm-sci-cht-localization` + my_skill)補「baked-art overlay 對撞→清空 cel」「打字硬關附答案」;「CI 監控派便宜 agent、旗艦別背景 poll」寫入 `rulebook/35`+`45` + kb `mac-app-cross-pack`。
 
+## 2026-07-11 輪(EGA 深化:序章標題 + kFormat 動態句 + credits + 全平台重發)
+
+> 使用者實機玩 EGA full AppImage 陸續回報序章英文殘留;派 audit subagent 全程盤點後批次修。
+
+1. **dist-all 交付形式改寫**(`tools/build_distall.sh`):產 **full self-contained AppImage**(遊戲內嵌 + AppRun 帶 `--path/--language`,`./AppImage` 直接玩免腳本)+ Windows/macOS 完整包 **zip**(macOS 用 `zip -y` 保留 .app symlink)。含遊戲資源→僅本機 `dist-all/`。
+2. **EGA 序章標題 `HERO'S QUEST` → 英雄傳奇**(`view.909`,SCI0 EGA view,可編非向量)。照原版風格(哥德花體→Noto Serif Bold、洋紅描邊 + 紅熔岩填充 + 黃/白火花,嚴格限 EGA 16 色)重繪全 26 幀:loop0/2 灰色頂部揭露飛入、loop1/3 洋紅熔岩閃爍定位。in-engine 驗證(灰飛入→頂部定色,版面同原版)。
+3. **kFormat 動態句 hook**(引擎,`kstring.cpp`→`patches/0001`):`kFormat` 代換 `%s`/`%d` 前把「模板」查表換中文模板(`GfxText16` 內容比對只看代換後字串,抓不到動態句)。支援**子序列對應 + 參數重映射**(中文可少於英文規格、丟英文複數 `%s`);**防呆**:含 `%s` 的非精確對應退回英文(`%s` 走 `argv` 直取不經重映射,錯位會崩)。單元測試 6 情形正確。修好「Good luck in your quest, <名>」等 ~20 動態句(VGA+EGA 共用引擎);gold/silver 複數句也修(視覺待真機確認,headless 開不了物品欄)。
+4. **credits 職稱標題詞**(`view.902`,15 cel):14 洋紅職稱(編劇/導演/程式設計/動畫/背景/場景/遊戲/開發/系統/製作/執行/監製)+ 音樂 譯中文;**人名保留原文**;「與」11px 太糊留空。in-engine 驗證。
+5. **MAGIC USER → 法師**(`view.506` loop2,死資源,綠+洋紅)。
+6. **全平台重發**(引擎改動影響 VGA+EGA):重編 Windows(mingw)+ Linux 引擎、`package.sh all`、macOS CI 重編、`gh release upload --clobber` 6 平台包 + dev-setup(刪舊 20260710)、重建 dist-all。打包/上傳/CI 監控派便宜 subagent 執行。
+
+**EGA 待辦(未在本批)**:序章副標「So You Want To Be A Hero」仍英文(view,可另做);kFormat gold/silver 中文輸出待真機視覺確認;職業選擇 11px 中文字偏小(EGA 320×200 先天限制,要更銳需 SCI0 hi-res 字型路徑=較大引擎工程)。
+
 ## M4 打包(2026-07-10)
 
 `tools/package.sh` 一鍵組裝,輸出到 `dist/packages/`(本機驗證過的 5 個檔):
