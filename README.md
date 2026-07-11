@@ -10,6 +10,8 @@
 
 ✨ 免費、開源,自備正版遊戲即可遊玩(Windows / Linux / macOS)。
 
+▶️ **預告片:https://youtu.be/wHm7xIkEG7k**
+
 👉 **github.com/wicanr2/qfg-cht-1**
 
 <!-- ↑↑↑ 推廣文案 ↑↑↑ -->
@@ -109,6 +111,12 @@
 ## 🀄 中文化專案
 
 > 引擎:ScummVM **SCI**(非 AGS)。技術路線 = 沿用 ScummVM SCI 引擎既有的韓文/日文 CJK 範式,新增一條**繁體中文(`ZH_TWN` + Big5)**渲染路徑,以**內容比對替換**的方式,在文字送進畫面前換成中文——不改壓縮、不動原始資源結構。
+
+### 🎬 預告片
+
+[![英雄傳奇 I 繁體中文化 — 預告片](https://img.youtube.com/vi/wHm7xIkEG7k/maxresdefault.jpg)](https://youtu.be/wHm7xIkEG7k)
+
+> EGA + VGA 雙版穿插:主選單「徵求英雄」海報、職業選擇、片頭火焰標題、工作人員表等 baked 美術字,以及**遊戲中即時對白的高解析中文**,配原版遊戲音樂。▶️ https://youtu.be/wHm7xIkEG7k
 
 ### 進度
 
