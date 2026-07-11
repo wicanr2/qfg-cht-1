@@ -33,6 +33,12 @@ static const char *kChineseFontFile = "qfg1_big5.fnt";
 // Rendered glyph box: Big5Font glyphs are 16px wide (kChineseTraditionalWidth).
 static const int kBig5Width = 16;
 
+// Hi-res Big5 font (own format, bake_hires_font.py): 32px-wide, kHiH-row glyphs drawn
+// straight onto the 640x400 display buffer for sharp strokes under ZH_TWN upscaling.
+static const char *kChineseHiResFontFile = "qfg1_big5_hi.fnt";
+static const int kHiW = 32;
+static const int kHiH = 28;
+
 GfxFontChinese::GfxFontChinese(ResourceManager *resMan, GfxScreen *screen, GuiResourceId resourceId)
 	: _screen(screen), _resourceId(resourceId), _big5(nullptr), _big5Height(14) {
 	// Original SCI font for single-byte (ASCII / control) glyphs.
@@ -46,6 +52,31 @@ GfxFontChinese::GfxFontChinese(ResourceManager *resMan, GfxScreen *screen, GuiRe
 	} else {
 		warning("GfxFontChinese: could not open '%s'; Chinese glyphs will be blank", kChineseFontFile);
 	}
+
+	_hiW = kHiW;
+	_hiH = kHiH;
+	loadHiResFont();
+}
+
+// Load the hi-res Big5 font: repeated { big-endian Big5 code (uint16), _hiH*(_hiW/8) glyph
+// bytes }, terminated by 0xFFFF. Keeps a code->offset index into the flat _hiData blob.
+// Missing file just means we fall back to the low-res Big5 path (no hi-res sharpening).
+bool GfxFontChinese::loadHiResFont() {
+	Common::File f;
+	if (!f.open(kChineseHiResFontFile))
+		return false;
+	const uint bytesPerGlyph = _hiH * (_hiW / 8);
+	while (!f.eos()) {
+		uint16 code = f.readUint16BE();
+		if (f.eos() || code == 0xFFFF)
+			break;
+		uint32 offset = _hiData.size();
+		_hiData.resize(offset + bytesPerGlyph);
+		if (f.read(&_hiData[offset], bytesPerGlyph) != bytesPerGlyph)
+			break;
+		_hiIndex[code] = offset;
+	}
+	return !_hiIndex.empty();
 }
 
 GfxFontChinese::~GfxFontChinese() {
@@ -91,6 +122,13 @@ void GfxFontChinese::draw(uint16 chr, int16 top, int16 left, byte color, bool gr
 	// Double-byte: chr == lead | (trail << 8); Big5Font wants (lead << 8) | trail.
 	uint16 point = ((chr & 0xFF) << 8) | (chr >> 8);
 
+	// Hi-res path: when ZH_TWN runs upscaled (640x400 display) and we have a hi-res glyph,
+	// draw sharp 32xN strokes directly onto the display instead of the blocky 2x low-res.
+	if (_screen->getDisplayWidth() > _screen->getWidth() && _hiIndex.contains(point)) {
+		drawHiRes(point, top, left, color);
+		return;
+	}
+
 	byte glyph[kBig5Width * 16];
 	memset(glyph, 0, sizeof(glyph));
 	bool drawn = false;
@@ -116,6 +154,40 @@ void GfxFontChinese::draw(uint16 chr, int16 top, int16 left, byte color, bool gr
 				_screen->putFontPixel(top, screenX, y, color);
 		}
 	}
+}
+
+// Draw a hi-res Big5 glyph directly onto the 640x400 display buffer. The game positions
+// text in logical 320x200 coords, so we map (left, top) -> (left*2, top*2) on the display
+// and toggle _fontIsUpscaled so putFontPixel writes straight to the display (no further
+// nearest-scale), giving sharp 32xN strokes. ASCII glyphs are unaffected (they draw with
+// _fontIsUpscaled == false and get the normal 2x upscale, matching the game art).
+void GfxFontChinese::drawHiRes(uint16 point, int16 top, int16 left, byte color) {
+	Common::HashMap<uint16, uint32>::const_iterator it = _hiIndex.find(point);
+	if (it == _hiIndex.end())
+		return;
+	const byte *bmp = &_hiData[it->_value];
+	const int rowBytes = _hiW / 8;
+	const int dispLeft = left * 2;
+	const int dispTop = top * 2;
+	const int dispW = _screen->getDisplayWidth();
+	const int dispH = _screen->getDisplayHeight();
+
+	const bool savedUpscaled = _screen->fontIsUpscaled();
+	_screen->setFontIsUpscaled(true);
+	for (int gy = 0; gy < _hiH; gy++) {
+		const int dispY = dispTop + gy;
+		if (dispY < 0 || dispY >= dispH)
+			continue;
+		for (int gx = 0; gx < _hiW; gx++) {
+			if (!(bmp[gy * rowBytes + (gx >> 3)] & (0x80 >> (gx & 7))))
+				continue;
+			const int dispX = dispLeft + gx;
+			if (dispX < 0 || dispX >= dispW)
+				continue;
+			_screen->putFontPixel(dispTop, dispX, gy, color);
+		}
+	}
+	_screen->setFontIsUpscaled(savedUpscaled);
 }
 
 } // End of namespace Sci
