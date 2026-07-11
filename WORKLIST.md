@@ -15,7 +15,8 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 | **M2-D VGA baked-art 重繪** | ✅ 角色創建:pic 904(13 屬性/技能名 + 姓名/經驗/生命/體力/法力)+ view 802(開始/取消/可分配點數)。**mnemonic overlay 對撞已修**:清空 view 802 loop1/2 的 26 個英文首字母 cel(蓋在中文標籤上成「S量」),露出 pic 中文,實機驗證(見 2026-07-11 輪) |
 | **M4 多平台打包 + Release** | ✅ macOS CI 已實跑;**GitHub Release `v1.0` 已發**,6 平台包(AppImage/Windows/macOS × VGA/EGA)+ dev-setup,**僅 patch 無遊戲資源**。含遊戲完整包在 `dist-all/`(私人保留,gitignore) |
 | 密碼/通關語 | ✅ 打字硬關就地附英文答案(盜賊 `schwertfisch`、女巫 `Hut of Brown, Now Sit Down`),VGA+EGA;`docs/70-passwords-and-riddles.md`(全關卡問題中/英+答案) |
-| 可玩性測試 | ✅ VGA/EGA 兩版實機驗證可玩(開機/中文渲染/baked-art/進角色創建);in-game 對話因 headless 互動限制未走完,建議真機補測 |
+| 可玩性測試 | ✅ VGA/EGA 兩版實機驗證可玩;**in-game 對話已走到村莊 NPC**(VGA「歡迎來到我們的城鎮」、食人妖描述框)實機驗證 hi-res 中文銳利、行首字完整 |
+| **hi-res live 中文字(#3)** | ✅ `ZH_TWN` 啟 640×400 + 32×28 hi-res Big5 字模直繪(VGA+EGA 對白/credits 銳利);對白斷行行首字掉左偏旁一併修好 |
 | 推廣影片 | ✅ `out/video/qfg1_cht_promo.mp4`(44s,VGA/EGA 穿插 + 原版配樂;版權素材 gitignore) |
 
 ## VGA baked-art 已識別(角色創建畫面)
@@ -55,6 +56,16 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 6. **全平台重發**(引擎改動影響 VGA+EGA):重編 Windows(mingw)+ Linux 引擎、`package.sh all`、macOS CI 重編、`gh release upload --clobber` 6 平台包 + dev-setup(刪舊 20260710)、重建 dist-all。打包/上傳/CI 監控派便宜 subagent 執行。
 
 **EGA 待辦(未在本批)**:序章副標「So You Want To Be A Hero」仍英文(view,可另做);kFormat gold/silver 中文輸出待真機視覺確認;職業選擇 11px 中文字偏小(EGA 320×200 先天限制,要更銳需 SCI0 hi-res 字型路徑=較大引擎工程)。
+
+## 2026-07-11 深夜輪(#3 hi-res live 中文字 + 對白斷行修正 + 全平台重發)
+
+> 使用者授權「開分支執行 #3、接受風險、完成經典」。#3 在 `feature/ega-hires-cht-font` 完成並實機驗證後合併回 main。
+
+1. **#3 hi-res live 中文字路徑**(引擎):`screen.cpp` 在 `ZH_TWN && UPSCALED_DISABLED` 時強制 `GFX_SCREEN_UPSCALED_640x400`;`GfxFontChinese` 另載 **32×28 hi-res Big5 字模**(`tools/bake_hires_font.py` 烘,`qfg1_big5_hi.fnt`,VGA+EGA 共用),雙位元組字在 640×400 下 `drawHiRes()` 直寫 display buffer(暫開 `_fontIsUpscaled`、座標 ×2),ASCII 仍走原字型 2× upscale。實機:VGA/EGA 對白、credits「遊戲設計」皆銳利、無崩潰。
+2. **對白框行首字掉左偏旁修正**(`text16.cpp GetLongest`):PC-98 日文 SJIS kinsoku 分支(多塞一個超 maxWidth 的雙位元組字)因 `isDoubleByte` 對 Big5 也成立而被繁中誤觸,長行 `textWidth>rect.width()`→`Box()` CENTER offset 變負→行首字左偏旁被裁(你→尔、據→豦、這掉辶)。ZH_TWN 改斷在容得下的最後一字,日文路徑 `lang!=ZH_TWN` gate 不動。**實機驗證**:村莊食人妖描述框滿寬置中行「這個奇怪且笨重的角色」行首「這」辶偏旁完整。低解析亦有此病,一併修好。
+3. **playtest 誤報澄清**:VGA 頂部狀態列 `152× font.0 glyph drawn out of bounds` 經查是 **QFG1 VGA 英文上游本來就有的水平溢出**(英文 run 同樣 152 次、X=324–358),非 hi-res 迴歸、非在地化造成,不處理。
+4. **全平台重發**:重編 Linux + Windows(mingw)引擎、`package.sh all`、macOS CI(`gh workflow run build-macos.yml`)重編、更新 Release v1.0(6 平台包 + dev-setup)、重建 dist-all。CI 監控派 haiku subagent。
+5. patch 重生:`text16.cpp` hunk 以 pristine(upstream 3d408ec)`diff -u` 重生抽換進 `0001`,全 11 檔對 pristine `patch -p0 --dry-run` 驗證可套。
 
 ## M4 打包(2026-07-10)
 
