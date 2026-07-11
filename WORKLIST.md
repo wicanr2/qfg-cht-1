@@ -1,4 +1,4 @@
-# 英雄傳奇 I 繁中化 — 工作交接 / worklist(截至 2026-07-09)
+# 英雄傳奇 I 繁中化 — 工作交接 / worklist(截至 2026-07-11)
 
 repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg-1/workplace`。
 
@@ -12,8 +12,10 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 | M2 古風字型 | ✅ AR PL UMing TW 明體 15px,烘 2486 字 Big5 |
 | **路線A view/pic 編碼器** | ✅ `tools/sci_view.py`(view + **pic**),view 908 / pic 904 spike 皆實機驗證(cel→「英雄」、Strength→「力量」) |
 | **M3 EGA 文字中文化** | ✅ **3878/3883(99%)**,1561 沿用 VGA + 2317 haiku;實機驗證版權文 |
-| **M2-D VGA baked-art 重繪** | ✅ 角色創建畫面:pic 904(13 屬性/技能名 + 姓名/經驗/生命/體力/法力)+ view 802(開始/取消/可分配點數),實機驗證(`out/shots/cc_03.png`)。Points Available 殘留已補修(`repaint/802_fixed.v56`) |
-| **M4 多平台打包** | ✅ 本機 5 檔(AppImage×2/Windows zip×2/dev-setup)已產出並驗證可執行;macOS 2 檔靠 CI(workflow 已寫,未跑) |
+| **M2-D VGA baked-art 重繪** | ✅ 角色創建:pic 904(13 屬性/技能名 + 姓名/經驗/生命/體力/法力)+ view 802(開始/取消/可分配點數)。**mnemonic overlay 對撞已修**:清空 view 802 loop1/2 的 26 個英文首字母 cel(蓋在中文標籤上成「S量」),露出 pic 中文,實機驗證(見 2026-07-11 輪) |
+| **M4 多平台打包 + Release** | ✅ macOS CI 已實跑;**GitHub Release `v1.0` 已發**,6 平台包(AppImage/Windows/macOS × VGA/EGA)+ dev-setup,**僅 patch 無遊戲資源**。含遊戲完整包在 `dist-all/`(私人保留,gitignore) |
+| 密碼/通關語 | ✅ 打字硬關就地附英文答案(盜賊 `schwertfisch`、女巫 `Hut of Brown, Now Sit Down`),VGA+EGA;`docs/70-passwords-and-riddles.md`(全關卡問題中/英+答案) |
+| 可玩性測試 | ✅ VGA/EGA 兩版實機驗證可玩(開機/中文渲染/baked-art/進角色創建);in-game 對話因 headless 互動限制未走完,建議真機補測 |
 | 推廣影片 | ✅ `out/video/qfg1_cht_promo.mp4`(44s,VGA/EGA 穿插 + 原版配樂;版權素材 gitignore) |
 
 ## VGA baked-art 已識別(角色創建畫面)
@@ -28,6 +30,18 @@ repo:`github.com/wicanr2/qfg-cht-1`(main,已 push)。工作目錄 `~/scummvm/qfg
 ## 交付原則(硬)
 - 中文化**僅放 ScummVM patch**:引擎改動(`patches/`)+ `dist/`(translation.tsv + qfg1_big5.fnt)+ view/pic patch。原遊戲資源不入庫。
 - 完整性:EGA/VGA 兩版都要交付。
+- **Release 只放不含遊戲的 patch 版;含遊戲完整可玩包只在本機 `dist-all/`(gitignore),私人保留。**
+
+## 2026-07-11 輪(密碼附答案 + 可玩性測試 + baked-art 收尾 + Release)
+
+1. **打字硬關就地附英文答案**:玩家必須打對英文才過的關,譯文問句後補 `(輸入:...)`,答案維持 ASCII(過 Big5 不變、parser 仍比對得到)。
+   - 盜賊口令 `schwertfisch`(酒館克拉舍);女巫小屋咒語 `Hut of Brown, Now Sit Down`(VGA `What is the rhyme?` / EGA `go ahead and say the rhyme`)。VGA+EGA `translation.tsv` 都改。
+   - **玩笑關別附正解**:Erasmus「三道謎題」答對答錯都被傳送進去(致敬《聖杯》),不是硬門檻。
+   - 全整理進 `docs/70-passwords-and-riddles.md`(問題中/英+答案表),README 技術文件索引補一列。
+2. **可玩性測試**(派 subagent):VGA/EGA 兩版開機/中文渲染/baked-art/進角色創建皆 PASS,無阻斷。in-game 對話因 headless 合成鍵無法穩定完成「命名對話框→進場」未走完,以離線佐證,建議真機補測。
+3. **VGA baked-art mnemonic overlay 收尾**:角色創建 runtime 時 view 802 loop1/2 的英文首字母縮寫(S/I/A/V/L/M…,兩色狀態)疊在 pic 904 中文標籤上成「S量」。清空 26 個 cel(同尺寸 `alpha=0` PNG,`sci_view.py encode --replace`),露出中文,實機驗證。**「magic user」殘留查為 2026-07-09 舊截圖誤報**,現行 506.v56 職業名牌已是 戰士/法師/盜賊。
+4. **Release `v1.0` 發布 + 對齊**:6 平台包全部帶最新譯文 + baked-art;macOS 靠 CI(`build-macos.yml` dispatch → `gh run download` → `gh release upload --clobber`)。`dist-all/` 六完整包重建。
+   - **經驗沉澱**:SCI CHT 方法論(kb `scummvm-sci-cht-localization` + my_skill)補「baked-art overlay 對撞→清空 cel」「打字硬關附答案」;「CI 監控派便宜 agent、旗艦別背景 poll」寫入 `rulebook/35`+`45` + kb `mac-app-cross-pack`。
 
 ## M4 打包(2026-07-10)
 
