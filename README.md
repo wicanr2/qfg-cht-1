@@ -172,6 +172,7 @@ EGA 與 VGA 雖是同一款遊戲,中文化卻踩到完全不同的雷:
 | [docs/30-text-pipeline.md](docs/30-text-pipeline.md) | 文字抽取 → 翻譯(TSV)→ Big5 字型烘製流程 |
 | [docs/40-baked-art-ui.md](docs/40-baked-art-ui.md) | baked 美術字中文化:自製 SCI1.1 view/pic 解碼/編碼器 |
 | [docs/60-sci-cht-methodology.md](docs/60-sci-cht-methodology.md) | **SCI 中文化第一性原理方法論**:內容比對替換、SCI0(EGA 向量 pic)vs SCI1.1(VGA bitmap)分水嶺、可複用清單(圖文) |
+| [docs/70-passwords-and-riddles.md](docs/70-passwords-and-riddles.md) | **密碼、通關語與謎題**:中文版如何處理要打字輸入英文的關卡(盜賊口令 `schwertfisch`、芭芭雅嘎咒語、Erasmus 玩笑謎題)+ 全部問題(中/英)與答案 |
 | [WORKLIST.md](WORKLIST.md) | 工作交接 / 現況快照 / 踩雷筆記 |
 
 **翻譯工作流**:`SCI_DUMP_RES` 抽字 → `extract_strings.py`(精確抽 key)→ 分批 → haiku subagent 翻譯 → `merge_translations.py`(保留 exact key)→ `build_cht.py`(NORMALIZE 修非 Big5 + 全形標點正規化 + 烘明體)→ `dist/`。
