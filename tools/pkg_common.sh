@@ -19,9 +19,12 @@ stage_cht_data() {
   else
     if [ -f "$ROOT/dist_ega/translation.tsv" ]; then base="$ROOT/dist_ega"; else base="$ROOT/dist-cht/ega"; fi
     cp "$base/translation.tsv" "$base/qfg1_big5.fnt" "$out/"
-    # EGA baked-art:SCI0 view patch(view.100 選單海報 / view.506 職業選擇)
+    # EGA baked-art:SCI0 view patch(view.100 選單海報 / view.506 職業選擇 …)
     cp "$ROOT"/art/ega/view.* "$out/" 2>/dev/null || true
   fi
+  # hi-res Big5 字模(640x400 upscale 用,VGA/EGA 共用同一份;缺檔時引擎自動退回低解析)
+  if [ -f "$ROOT/dist/qfg1_big5_hi.fnt" ]; then cp "$ROOT/dist/qfg1_big5_hi.fnt" "$out/"
+  elif [ -f "$ROOT/dist-cht/qfg1_big5_hi.fnt" ]; then cp "$ROOT/dist-cht/qfg1_big5_hi.fnt" "$out/"; fi
   echo ">>    staged $(ls "$out" | wc -l) 個中文資料檔 → $out"
 }
 

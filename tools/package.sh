@@ -41,6 +41,13 @@ rebuild_cht_data() {
     -v "$UMING_FONT:$UMING_FONT:ro" \
     -w /w ghcr.io/astral-sh/uv:python3.12-bookworm-slim \
     uv run --quiet --with pillow tools/build_cht.py translation/ega/translation.tsv dist_ega
+  # hi-res Big5 字模(32x28,640x400 upscale 用):涵蓋 VGA+EGA 兩份譯文的所有中文字,一份共用。
+  log "烘 hi-res Big5 字模(bake_hires_font.py)→ dist/qfg1_big5_hi.fnt"
+  docker run --rm \
+    -v "$ROOT/tools:/w/tools" -v "$ROOT/translation:/w/translation" -v "$ROOT/dist:/w/dist" \
+    -v "$UMING_FONT:$UMING_FONT:ro" \
+    -w /w ghcr.io/astral-sh/uv:python3.12-bookworm-slim \
+    uv run --quiet --with pillow tools/bake_hires_font.py dist/qfg1_big5_hi.fnt translation/translation.tsv translation/ega/translation.tsv
 }
 
 # ---------------------------------------------------------------------------

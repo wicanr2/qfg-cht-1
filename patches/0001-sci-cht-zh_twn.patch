@@ -545,3 +545,20 @@
  	while ((xfer = *source++)) {
  		if (xfer == '%') {
  			if (mode == 1) {
+--- engines/sci/graphics/screen.cpp
++++ engines/sci/graphics/screen.cpp
+@@ -84,6 +84,14 @@
+ 		}
+ 	}
+ 
++	// CHT: Traditional Chinese needs a hi-res display buffer so Big5 glyphs render with
++	// real stroke detail instead of a blocky 320x200 nearest-scale. Enable 2x upscaling
++	// (640x400) for ZH_TWN when the game would otherwise run at plain 320x200. Game art
++	// (pics/views) still 2x-upscales as usual; only the Chinese font draws hi-res pixels
++	// directly onto the display buffer (see GfxFontChinese + putFontPixel/_fontIsUpscaled).
++	if (_upscaledHires == GFX_SCREEN_UPSCALED_DISABLED && g_sci->getLanguage() == Common::ZH_TWN)
++		_upscaledHires = GFX_SCREEN_UPSCALED_640x400;
++
+ 	// if not yet set, set those to script-width/height
+ 	if (!_width)
+ 		_width = _scriptWidth;
