@@ -233,8 +233,8 @@
  	byte getColorWhite() { return _colorWhite; }
  	byte getColorDefaultVectorData() { return _colorDefaultVectorData; }
  
---- engines/sci/sci.cpp	2026-06-20 09:43:09.836779220 +0800
-+++ engines/sci/sci.cpp	2026-07-10 14:46:25.306679011 +0800
+--- engines/sci/sci.cpp
++++ engines/sci/sci.cpp
 @@ -19,6 +19,9 @@
   *
   */
@@ -308,14 +308,38 @@
  #ifdef ENABLE_SCI32
  	if (getSciVersion() >= SCI_VERSION_2) {
  		// SCI32 graphic objects creation
-@@ -831,7 +876,66 @@
+@@ -831,7 +876,90 @@
  	return _gameDescription->gameId;
  }
  
++// CHT: collapse every run of whitespace (space, \r, \n, \t) to a single space and trim
++// the ends. SCI message resources embed hard "\r\n" line breaks, but translation.tsv keys
++// are single-line with those breaks flattened to spaces -- without this the runtime string
++// (e.g. the kFormat money template "...piece%s,\r\n weighing...") never matches its key.
++// Applied identically to keys at load and to lookups, so an already-matching pair still
++// matches (both collapse the same way).
++static Common::String sciChtNormKey(const Common::String &in) {
++	Common::String out;
++	bool pendingSpace = false, started = false;
++	for (uint i = 0; i < in.size(); ++i) {
++		const char c = in[i];
++		if (c == ' ' || c == '\r' || c == '\n' || c == '\t') {
++			pendingSpace = started; // ignore leading whitespace
++		} else {
++			if (pendingSpace)
++				out += ' ';
++			out += c;
++			pendingSpace = false;
++			started = true;
++		}
++	}
++	return out;
++}
++
 +const char *SciEngine::getChtTranslation(const char *original) const {
 +	if (_chtTranslation.empty() || !original)
 +		return nullptr;
-+	Common::HashMap<Common::String, Common::String>::const_iterator it = _chtTranslation.find(original);
++	Common::HashMap<Common::String, Common::String>::const_iterator it = _chtTranslation.find(sciChtNormKey(original));
 +	if (it == _chtTranslation.end())
 +		return nullptr;
 +	return it->_value.c_str();
@@ -358,7 +382,7 @@
 +			continue;
 +		// Unescape "\\n"->newline and "\\\\"->backslash (SCI0/EGA strings contain
 +		// hard line breaks, which cannot sit literally in a line-based TSV).
-+		_chtTranslation[unescapeCht(key)] = unescapeCht(val);
++		_chtTranslation[sciChtNormKey(unescapeCht(key))] = unescapeCht(val);
 +		++count;
 +	}
 +	debug(1, "CHT: loaded %d translation entries", count);
